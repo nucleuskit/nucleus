@@ -1,0 +1,23 @@
+name: Documentation issue
+description: Report missing, confusing, or stale documentation.
+title: "docs: "
+labels: ["type:docs", "area:docs", "status:needs-triage"]
+body:
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: Link the page or file if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is unclear, missing, or outdated?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested change

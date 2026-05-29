@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        if: hashFiles('go.mod') != ''
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache: true
+
+      - name: Verify Go workspace
+        if: hashFiles('go.mod') != ''
+        run: |
+          set -euo pipefail
+          go version
+          if [ -f go.work ]; then
+            go work sync
+          fi
+          go test ./...
+
+      - name: Verify docs-only seed
+        if: hashFiles('go.mod') == ''
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f LICENSE
+          test -f CONTRIBUTING.md
+          test -f SECURITY.md
+          echo "No Go module has been imported yet; docs seed verified."
