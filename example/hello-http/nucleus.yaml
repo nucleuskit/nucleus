@@ -1,0 +1,32 @@
+schema_version: "1.0"
+service:
+  name: hello-http
+  version: "0.1.0"
+  env: example
+  owner: nucleus-maintainers
+  tier: example
+  namespace: examples
+  description: Minimal contract-first HTTP service used by CLI describe tests.
+capabilities:
+  - http
+  - log
+dependencies:
+  - name: greeting-profile
+    contract: api/openapi.yaml#/paths/~1hello~1{name}
+    required: false
+ai:
+  intent: Exercise nucleus describe against a runnable example service.
+  allowed_changes:
+    - api/**
+    - configs/**
+    - internal/**
+  readonly:
+    - internal/adapter/http/gen/**
+  forbidden:
+    - configs/*.local.yaml
+  generated:
+    - internal/adapter/http/gen
+nucleus:
+  providers:
+    log:
+      provider: noop
