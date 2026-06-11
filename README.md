@@ -48,8 +48,8 @@ Generated handlers, types, clients, and freshness metadata are derived from thes
 
 Nucleus separates capability declaration from infrastructure implementation:
 
-- `cap/*` defines small interfaces, options, and no-op implementations.
-- `bridge/*` provides optional adapters.
+- `github.com/nucleuskit/cap/*` defines small interfaces, options, and no-op implementations.
+- `github.com/nucleuskit/bridge/*` provides optional adapters.
 - Application wiring injects bridges into runtime code.
 - Domain code stays independent from transport and infrastructure SDKs.
 
@@ -69,21 +69,25 @@ The goal is not just to generate code. The goal is to produce evidence that the 
 
 ## Project Shape
 
-The first public source import is expected to use this layout:
+The main repository hosts the CLI, examples, and public documentation:
 
 ```text
 api/                 Contract files
-core/                Standard-library-first kernel primitives
-contract/            Contract parsing, schema, generation, and inspection
-cap/                 Capability protocol interfaces and no-op implementations
-bridge/              Optional infrastructure adapters
-runtime/             HTTP, gRPC, and worker runtime assembly
 cmd/nucleus/         CLI implementation
-examples/            Runnable examples
-template/            Service, worker, library, and agent templates
+example/             Runnable examples
 docs/                Concepts, ADRs, plans, and platform mapping
-test/                Integration tests and fixtures
 ```
+
+The kernel, contract, capability, bridge, and runtime packages are published as
+separate Go modules:
+
+- `github.com/nucleuskit/core`
+- `github.com/nucleuskit/contract`
+- `github.com/nucleuskit/cap`
+- `github.com/nucleuskit/bridge`
+- `github.com/nucleuskit/http`
+- `github.com/nucleuskit/grpc`
+- `github.com/nucleuskit/worker`
 
 ## Roadmap
 
