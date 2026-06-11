@@ -12,11 +12,10 @@ import (
 func TestNucleusDescribeExample(t *testing.T) {
 	exampleDir := exampleRoot(t)
 	repoRoot := filepath.Clean(filepath.Join(exampleDir, "..", ".."))
-	workspace := writeWorkspace(t, repoRoot, exampleDir)
 
 	cmd := exec.Command("go", "run", filepath.Join(repoRoot, "cmd", "nucleus"), "describe", "--dir", exampleDir, "--json", "--flow", "--schema", "example-test")
-	cmd.Dir = exampleDir
-	cmd.Env = append(os.Environ(), "GOWORK="+workspace)
+	cmd.Dir = repoRoot
+	cmd.Env = append(os.Environ(), "GOWORK=off")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("nucleus describe failed: %v\n%s", err, output)
@@ -64,26 +63,6 @@ func exampleRoot(t *testing.T) string {
 		t.Fatal("runtime.Caller failed")
 	}
 	return filepath.Dir(filename)
-}
-
-func writeWorkspace(t *testing.T, repoRoot string, exampleDir string) string {
-	t.Helper()
-	workspace := filepath.Join(t.TempDir(), "go.work")
-	content := "go 1.26.3\n\nuse (\n" +
-		"\t" + filepath.ToSlash(repoRoot) + "\n" +
-		"\t" + filepath.ToSlash(exampleDir) + "\n" +
-		"\t" + filepath.ToSlash(filepath.Join(repoRoot, "bridge")) + "\n" +
-		"\t" + filepath.ToSlash(filepath.Join(repoRoot, "cap")) + "\n" +
-		"\t" + filepath.ToSlash(filepath.Join(repoRoot, "contract")) + "\n" +
-		"\t" + filepath.ToSlash(filepath.Join(repoRoot, "core")) + "\n" +
-		"\t" + filepath.ToSlash(filepath.Join(repoRoot, "runtime", "grpc")) + "\n" +
-		"\t" + filepath.ToSlash(filepath.Join(repoRoot, "runtime", "http")) + "\n" +
-		"\t" + filepath.ToSlash(filepath.Join(repoRoot, "runtime", "worker")) + "\n" +
-		")\n"
-	if err := os.WriteFile(workspace, []byte(content), 0o600); err != nil {
-		t.Fatalf("write temporary go.work: %v", err)
-	}
-	return workspace
 }
 
 func requireMap(t *testing.T, value map[string]any, key string) map[string]any {
