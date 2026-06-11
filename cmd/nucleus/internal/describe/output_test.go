@@ -1,10 +1,15 @@
 package describe
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestBuildOutputAddsDescribeMetadata(t *testing.T) {
+	dir := newDescribeFixture(t)
 	output, err := BuildOutput(OutputOptions{
-		Dir:            ".",
+		Dir:            dir,
 		SchemaOverride: "9.9",
 		IncludeFlow:    true,
 	})
@@ -27,7 +32,8 @@ func TestBuildOutputAddsDescribeMetadata(t *testing.T) {
 }
 
 func TestBuildOutputUsesDefaultSchemaVersion(t *testing.T) {
-	output, err := BuildOutput(OutputOptions{Dir: "."})
+	dir := newDescribeFixture(t)
+	output, err := BuildOutput(OutputOptions{Dir: dir})
 	if err != nil {
 		t.Fatalf("BuildOutput() error = %v", err)
 	}
@@ -37,4 +43,20 @@ func TestBuildOutputUsesDefaultSchemaVersion(t *testing.T) {
 	if output["flow_graph"] != nil {
 		t.Fatal("flow_graph present without IncludeFlow")
 	}
+}
+
+func newDescribeFixture(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	manifest := []byte(`schema_version: "1.0"
+service:
+  name: fixture
+  version: "0.1.0"
+ai: {}
+nucleus: {}
+`)
+	if err := os.WriteFile(filepath.Join(dir, "nucleus.yaml"), manifest, 0o600); err != nil {
+		t.Fatalf("write nucleus.yaml: %v", err)
+	}
+	return dir
 }

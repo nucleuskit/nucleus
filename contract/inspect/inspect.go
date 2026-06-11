@@ -1,21 +1,65 @@
 package inspect
 
-// Description 服务描述
-type Description struct {
-	FlowGraph *FlowGraph `json:"flow_graph,omitempty"` // 服务流图
-}
+import (
+	"path/filepath"
 
-// FlowGraph 服务流图
-type FlowGraph struct {
-	SchemaVersion string `json:"schema_version"` // 架构版本
-}
+	"github.com/nucleuskit/contract/errors"
+	"github.com/nucleuskit/contract/manifest"
+	"github.com/nucleuskit/contract/openapi"
+	"github.com/nucleuskit/contract/proto"
+)
 
-// BuildFlowGraphFromDir 创建服务流图
-func BuildFlowGraphFromDir(dir string) (FlowGraph, error) {
-	return FlowGraph{}, nil
-}
-
-// Describe 描述服务
+// Describe loads contract and manifest metadata for a service directory.
 func Describe(dir string) (Description, error) {
-	return Description{}, nil
+	m, err := manifest.Load(dir)
+	if err != nil {
+		return Description{}, err
+	}
+	endpoints, err := openapi.LoadEndpoints(dir)
+	if err != nil {
+		return Description{}, err
+	}
+	grpcServices, err := proto.LoadServices(dir)
+	if err != nil {
+		return Description{}, err
+	}
+	errorCodes, err := errors.Load(dir)
+	if err != nil {
+		return Description{}, err
+	}
+	imports, err := ImportGraph(dir)
+	if err != nil {
+		return Description{}, err
+	}
+
+	return Description{
+		SchemaVersion:      "1.0",
+		Service:            m.Service,
+		Capabilities:       m.Capabilities,
+		Endpoints:          endpoints,
+		GRPCServices:       grpcServices,
+		ErrorCodes:         errorCodes,
+		Dependencies:       m.Dependencies,
+		Modules:            readModules(filepath.Join(dir, "go.mod")),
+		ConfigKeys:         collectConfigKeys(dir),
+		Policy:             defaultPolicy(),
+		EditSurfaces:       editSurfaces(m),
+		GeneratedFreshness: freshness(dir, m),
+		CapabilityGraph:    capabilityGraph(m, imports),
+		Verification:       defaultVerification(),
+	}, nil
+}
+
+func defaultPolicy() map[string]any {
+	return map[string]any{"outbound": map[string]any{}}
+}
+
+func defaultVerification() Verification {
+	return Verification{
+		Commands: []string{
+			"nucleus validate --dir .",
+			"nucleus lint --dir .",
+			"go test ./...",
+		},
+	}
 }
