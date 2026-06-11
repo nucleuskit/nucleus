@@ -50,10 +50,12 @@ func Describe(dir string) (Description, error) {
 	}, nil
 }
 
+// defaultPolicy 默认策略
 func defaultPolicy() map[string]any {
 	return map[string]any{defaultPolicyOutboundKey: map[string]any{}}
 }
 
+// defaultVerification 默认验证
 func defaultVerification() Verification {
 	return Verification{
 		Commands: []string{

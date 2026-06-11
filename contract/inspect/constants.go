@@ -39,7 +39,7 @@ const (
 	moduleRuntime    = moduleRoot + "/runtime"
 )
 const (
-	configDirName        = "configs"
+	configDirName        = "configs" // 配置目录
 	configLocalNamePart  = "local"
 	configSecretNamePart = "secret"
 	configYAMLExtension  = ".yaml"
@@ -124,23 +124,24 @@ const (
 )
 
 const (
-	selectorRegisterRoutes    = "RegisterRoutes"
-	selectorHandle            = "Handle"
-	selectorRegisterWellKnown = "RegisterWellKnown"
-	selectorHTTPClientDo      = "Do"
-	selectorLogDebug          = "Debug"
-	selectorLogInfo           = "Info"
-	selectorLogWarn           = "Warn"
-	selectorLogError          = "Error"
-	identifierHTTP            = "http"
-	identifierBlankImport     = "_"
-	identifierDotImport       = "."
+	selectorRegisterRoutes    = "RegisterRoutes"    // 注册路由
+	selectorHandle            = "Handle"            // 处理请求
+	selectorRegisterWellKnown = "RegisterWellKnown" // 注册 Well-Known
+	selectorHTTPClientDo      = "Do"                // 执行 HTTP 请求
+	selectorLogDebug          = "Debug"             // 调试日志
+	selectorLogInfo           = "Info"              // 信息日志
+	selectorLogWarn           = "Warn"              // 警告日志
+	selectorLogError          = "Error"             // 错误日志
+
+	identifierHTTP        = "http" // http包名
+	identifierBlankImport = "_"    //
+	identifierDotImport   = "."
 )
 
 const (
-	selectorHTTPMethodGet    = "MethodGet"
-	selectorHTTPMethodPost   = "MethodPost"
-	selectorHTTPMethodPut    = "MethodPut"
+	selectorHTTPMethodGet    = "MethodGet"  // GET
+	selectorHTTPMethodPost   = "MethodPost" //  POST
+	selectorHTTPMethodPut    = "MethodPut"  // PUT
 	selectorHTTPMethodPatch  = "MethodPatch"
 	selectorHTTPMethodDelete = "MethodDelete"
 )

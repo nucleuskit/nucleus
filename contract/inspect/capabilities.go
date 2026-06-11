@@ -7,6 +7,7 @@ import (
 	"github.com/nucleuskit/contract/manifest"
 )
 
+// capabilityGraph returns a list of capability nodes.
 func capabilityGraph(m manifest.Manifest, imports []string) []CapabilityNode {
 	nodes := make([]CapabilityNode, 0, len(m.Capabilities))
 	for _, capability := range m.Capabilities {
@@ -28,6 +29,7 @@ func capabilityGraph(m manifest.Manifest, imports []string) []CapabilityNode {
 	return nodes
 }
 
+// manifestCapabilityProvider returns the capability provider for a declared capability.
 func manifestCapabilityProvider(m manifest.Manifest, capability string) string {
 	if values, ok := m.Nucleus.Providers[capability]; ok {
 		if text, _ := values[providerConfigKey].(string); strings.TrimSpace(text) != "" {
@@ -47,6 +49,7 @@ func manifestCapabilityProvider(m manifest.Manifest, capability string) string {
 	return strings.TrimSpace(text)
 }
 
+// capabilityProvider returns the capability provider for an undeclared capability.
 func capabilityProvider(capability string, imports []string) string {
 	providers := map[string][]string{
 		"log":          {"zap"},
@@ -130,6 +133,7 @@ func CapabilityModule(capability string) string {
 	}
 }
 
+// matchingImports returns the matching imports for a module.
 func matchingImports(module string, imports []string) []string {
 	if module == "" {
 		return nil

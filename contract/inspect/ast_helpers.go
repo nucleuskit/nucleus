@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// isGeneratedSourcePath returns true if the path is generated.
 func isGeneratedSourcePath(path string) bool {
 	return strings.HasPrefix(path, contractGeneratedTarget+"/") ||
 		strings.HasPrefix(path, generatedHTTPAdapterTarget+"/") ||
@@ -15,6 +16,7 @@ func isGeneratedSourcePath(path string) bool {
 		strings.Contains(path, "/"+generatedGRPCAdapterTarget+"/")
 }
 
+// selectorName returns the name of the selector expression.
 func selectorName(expr ast.Expr) string {
 	selected, ok := expr.(*ast.SelectorExpr)
 	if !ok {
@@ -23,6 +25,7 @@ func selectorName(expr ast.Expr) string {
 	return selected.Sel.Name
 }
 
+// httpMethodLiteral returns the HTTP method literal value and true if the expression is a literal.
 func httpMethodLiteral(expr ast.Expr) (string, bool) {
 	if value, ok := stringLiteral(expr); ok {
 		return strings.ToUpper(value), true
@@ -50,6 +53,7 @@ func httpMethodLiteral(expr ast.Expr) (string, bool) {
 	}
 }
 
+// stringLiteral returns the string literal value and true if the expression is a literal.
 func stringLiteral(expr ast.Expr) (string, bool) {
 	lit, ok := expr.(*ast.BasicLit)
 	if !ok || lit.Kind != token.STRING {
@@ -62,6 +66,7 @@ func stringLiteral(expr ast.Expr) (string, bool) {
 	return value, true
 }
 
+// funcLitUsesLog returns true if the function literal uses log.
 func funcLitUsesLog(fn *ast.FuncLit) bool {
 	found := false
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
@@ -91,6 +96,7 @@ func funcLitUsesLog(fn *ast.FuncLit) bool {
 	return found
 }
 
+// shouldSkipSourceDir returns true if the directory should be skipped.
 func shouldSkipSourceDir(name string) bool {
 	switch name {
 	case skipDirGit, skipDirGitNexus, skipDirVendor, skipDirNodeModules:
@@ -100,6 +106,7 @@ func shouldSkipSourceDir(name string) bool {
 	}
 }
 
+// fileImports returns true if the file imports the given import path.
 func fileImports(file *ast.File, importPath string) bool {
 	quoted := `"` + importPath + `"`
 	for _, spec := range file.Imports {
@@ -110,6 +117,7 @@ func fileImports(file *ast.File, importPath string) bool {
 	return false
 }
 
+// callName returns the name of the call expression.
 func callName(expr ast.Expr) string {
 	switch value := expr.(type) {
 	case *ast.Ident:
@@ -121,6 +129,7 @@ func callName(expr ast.Expr) string {
 	}
 }
 
+// exportedOperationName returns the exported operation name.
 func exportedOperationName(operationID string) string {
 	if operationID == "" {
 		return ""
@@ -137,6 +146,7 @@ func exportedOperationName(operationID string) string {
 	return strings.Join(parts, "")
 }
 
+// paramTarget returns the target of the parameter.
 func paramTarget(handler sourceFunction, name string) string {
 	if name == "" || name == flowRequestBodyName {
 		return ""

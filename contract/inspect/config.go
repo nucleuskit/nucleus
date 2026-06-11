@@ -9,6 +9,7 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
+// collectConfigKeys 读取配置文件并返回配置键
 func collectConfigKeys(dir string) []ConfigKey {
 	configDir := filepath.Join(dir, configDirName)
 	entries, err := os.ReadDir(configDir)
