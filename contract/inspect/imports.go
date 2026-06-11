@@ -13,7 +13,7 @@ import (
 func ImportGraph(dir string) ([]string, error) {
 	seen := map[string]bool{}
 	if err := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") {
+		if err != nil || entry.IsDir() || !strings.HasSuffix(path, goSourceExtension) {
 			return nil
 		}
 		if skipPath(path) {
@@ -42,7 +42,7 @@ func ImportGraph(dir string) ([]string, error) {
 // skipPath 跳过路径
 func skipPath(path string) bool {
 	clean := filepath.ToSlash(path)
-	return strings.Contains(clean, "/.git/") ||
-		strings.Contains(clean, "/.idea/") ||
-		strings.Contains(clean, "/.cursor/")
+	return strings.Contains(clean, skipPathGit) ||
+		strings.Contains(clean, skipPathIdea) ||
+		strings.Contains(clean, skipPathCursor)
 }

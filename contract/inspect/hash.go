@@ -15,13 +15,13 @@ const FreshnessMarker = ".nucleus-source.sha256"
 
 func ContractSourceHash(dir string) (string, error) {
 	paths := []string{
-		filepath.Join(dir, "api", "openapi.yaml"),
-		filepath.Join(dir, "api", "errors.yaml"),
+		filepath.Join(dir, filepath.FromSlash(contractPathOpenAPI)),
+		filepath.Join(dir, filepath.FromSlash(contractPathErrors)),
 	}
-	protoDir := filepath.Join(dir, "api", "proto")
+	protoDir := filepath.Join(dir, filepath.FromSlash(contractProtoDir))
 	if entries, err := os.ReadDir(protoDir); err == nil {
 		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".proto") {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), contractProtoFileSuffix) {
 				paths = append(paths, filepath.Join(protoDir, entry.Name()))
 			}
 		}

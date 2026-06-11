@@ -33,14 +33,14 @@ func Describe(dir string) (Description, error) {
 	}
 
 	return Description{
-		SchemaVersion:      "1.0",
+		SchemaVersion:      descriptionSchemaVersion,
 		Service:            m.Service,
 		Capabilities:       m.Capabilities,
 		Endpoints:          endpoints,
 		GRPCServices:       grpcServices,
 		ErrorCodes:         errorCodes,
 		Dependencies:       m.Dependencies,
-		Modules:            readModules(filepath.Join(dir, "go.mod")),
+		Modules:            readModules(filepath.Join(dir, goModFileName)),
 		ConfigKeys:         collectConfigKeys(dir),
 		Policy:             defaultPolicy(),
 		EditSurfaces:       editSurfaces(m),
@@ -51,15 +51,15 @@ func Describe(dir string) (Description, error) {
 }
 
 func defaultPolicy() map[string]any {
-	return map[string]any{"outbound": map[string]any{}}
+	return map[string]any{defaultPolicyOutboundKey: map[string]any{}}
 }
 
 func defaultVerification() Verification {
 	return Verification{
 		Commands: []string{
-			"nucleus validate --dir .",
-			"nucleus lint --dir .",
-			"go test ./...",
+			commandValidate,
+			commandLint,
+			commandGoTest,
 		},
 	}
 }

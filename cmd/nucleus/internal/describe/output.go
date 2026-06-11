@@ -6,8 +6,6 @@ import (
 	"github.com/nucleuskit/contract/inspect"
 )
 
-const defaultSchemaVersion = "1.1"
-
 // OutputOptions controls the describe JSON payload.
 type OutputOptions struct {
 	Dir            string
@@ -32,8 +30,8 @@ func BuildOutput(opts OutputOptions) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	data["schema_version"] = schemaVersion(opts.SchemaOverride)
-	data["verification"] = verificationContract()
+	data[outputFieldSchemaVersion] = schemaVersion(opts.SchemaOverride)
+	data[outputFieldVerification] = verificationContract()
 	return data, nil
 }
 

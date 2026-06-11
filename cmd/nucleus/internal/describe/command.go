@@ -22,8 +22,8 @@ type options struct {
 func NewCommand(config Config) *cobra.Command {
 	opts := &options{}
 	cmd := &cobra.Command{
-		Use:   "describe",
-		Short: "describe service metadata as JSON",
+		Use:   commandUseDescribe,
+		Short: commandShortSummary,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			output, err := BuildOutput(buildOptions(config, opts))
 			if err != nil {
@@ -31,21 +31,21 @@ func NewCommand(config Config) *cobra.Command {
 			}
 			encoder := json.NewEncoder(cmd.OutOrStdout())
 			if opts.pretty {
-				encoder.SetIndent("", "  ")
+				encoder.SetIndent(jsonIndentPrefix, jsonIndentValue)
 			}
 			return encoder.Encode(output)
 		},
 	}
-	cmd.Flags().BoolVar(&opts.json, "json", false, "emit JSON")
-	cmd.Flags().BoolVar(&opts.pretty, "pretty", false, "pretty-print JSON")
-	cmd.Flags().BoolVar(&opts.flow, "flow", false, "include conservative flow graph")
+	cmd.Flags().BoolVar(&opts.json, flagJSON, false, flagHelpJSON)
+	cmd.Flags().BoolVar(&opts.pretty, flagPretty, false, flagHelpPretty)
+	cmd.Flags().BoolVar(&opts.flow, flagFlow, false, flagHelpFlow)
 	return cmd
 }
 
 // buildOptions builds an OutputOptions struct from the root command's flag values.
 func buildOptions(config Config, opts *options) OutputOptions {
 	return OutputOptions{
-		Dir:            stringValue(config.Dir, "."),
+		Dir:            stringValue(config.Dir, defaultDir),
 		SchemaOverride: stringValue(config.SchemaOverride, ""),
 		IncludeFlow:    opts.flow,
 	}

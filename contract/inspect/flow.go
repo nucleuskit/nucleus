@@ -23,7 +23,7 @@ func BuildFlowGraphFromDir(dir string) (FlowGraph, error) {
 // BuildFlowGraphFromContracts builds route, operation, parameter, and error facts from contracts.
 func BuildFlowGraphFromContracts(routes []openapi.Route, errorCodes []errors.Code) FlowGraph {
 	graph := FlowGraph{
-		SchemaVersion: "1.0",
+		SchemaVersion: flowGraphSchemaVersion,
 		Nodes:         make([]FlowNode, 0, len(routes)*3),
 		Edges:         make([]FlowEdge, 0, len(routes)*2),
 		Params:        []FlowFact{},
@@ -34,45 +34,45 @@ func BuildFlowGraphFromContracts(routes []openapi.Route, errorCodes []errors.Cod
 		endpoint := openapi.Endpoint{Method: route.Method, Path: route.Path, OperationID: route.OperationID}
 		routeID := flowRouteID(endpoint)
 		operationID := flowOperationID(endpoint)
-		outboundID := routeID + ":outbound:unknown"
+		outboundID := routeID + flowUnknownOutboundID
 		graph.Nodes = append(graph.Nodes,
 			FlowNode{
 				ID:          routeID,
-				Kind:        "route",
+				Kind:        flowNodeKindRoute,
 				Name:        endpoint.Method + " " + endpoint.Path,
 				Method:      endpoint.Method,
 				Path:        endpoint.Path,
 				OperationID: endpoint.OperationID,
-				Source:      "api/openapi.yaml",
+				Source:      flowSourceOpenAPI,
 				Inferred:    false,
 			},
 			FlowNode{
 				ID:          operationID,
-				Kind:        "handler",
-				Name:        chooseString(endpoint.OperationID, "unknown"),
+				Kind:        flowNodeKindHandler,
+				Name:        chooseString(endpoint.OperationID, flowUnknownName),
 				Method:      endpoint.Method,
 				Path:        endpoint.Path,
 				OperationID: endpoint.OperationID,
-				Source:      "api/openapi.yaml",
+				Source:      flowSourceOpenAPI,
 				Inferred:    false,
 			},
 			FlowNode{
 				ID:       outboundID,
-				Kind:     "outbound",
-				Name:     "unknown",
-				Source:   "static analysis unavailable",
+				Kind:     flowNodeKindOutbound,
+				Name:     flowUnknownName,
+				Source:   flowSourceStaticUnavailable,
 				Inferred: false,
 			},
 		)
 		graph.Edges = append(graph.Edges,
-			FlowEdge{From: routeID, To: operationID, Kind: "dispatch", Inferred: false},
-			FlowEdge{From: operationID, To: outboundID, Kind: "outbound_unknown", Inferred: false},
+			FlowEdge{From: routeID, To: operationID, Kind: flowEdgeKindDispatch, Inferred: false},
+			FlowEdge{From: operationID, To: outboundID, Kind: flowEdgeKindOutboundUnknown, Inferred: false},
 		)
 		for _, parameter := range route.Parameters {
 			graph.Params = append(graph.Params, FlowFact{
 				Name:        parameter.In + "." + parameter.Name,
-				Kind:        "openapi_parameter",
-				Source:      "api/openapi.yaml",
+				Kind:        flowFactKindOpenAPIParameter,
+				Source:      flowSourceOpenAPI,
 				Route:       route.Method + " " + route.Path,
 				OperationID: route.OperationID,
 				Required:    parameter.Required,
@@ -82,9 +82,9 @@ func BuildFlowGraphFromContracts(routes []openapi.Route, errorCodes []errors.Cod
 		}
 		if route.RequestBodyRequired {
 			graph.Params = append(graph.Params, FlowFact{
-				Name:        "body.required",
-				Kind:        "openapi_request_body",
-				Source:      "api/openapi.yaml",
+				Name:        flowRequestBodyName,
+				Kind:        flowFactKindOpenAPIRequestBody,
+				Source:      flowSourceOpenAPI,
 				Route:       route.Method + " " + route.Path,
 				OperationID: route.OperationID,
 				Required:    true,
@@ -98,8 +98,8 @@ func BuildFlowGraphFromContracts(routes []openapi.Route, errorCodes []errors.Cod
 		}
 		graph.ErrorPaths = append(graph.ErrorPaths, FlowFact{
 			Name:       code.Message,
-			Kind:       "error_code",
-			Source:     "api/errors.yaml",
+			Kind:       flowFactKindErrorCode,
+			Source:     flowSourceErrors,
 			Code:       code.Code,
 			HTTPStatus: code.HTTPStatus,
 			Inferred:   false,
@@ -109,14 +109,14 @@ func BuildFlowGraphFromContracts(routes []openapi.Route, errorCodes []errors.Cod
 }
 
 func flowRouteID(endpoint openapi.Endpoint) string {
-	return "route:" + endpoint.Method + " " + endpoint.Path
+	return flowIDPrefixRoute + endpoint.Method + " " + endpoint.Path
 }
 
 func flowOperationID(endpoint openapi.Endpoint) string {
 	if endpoint.OperationID != "" {
-		return "operation:" + endpoint.OperationID
+		return flowIDPrefixOperation + endpoint.OperationID
 	}
-	return "operation:" + endpoint.Method + " " + endpoint.Path
+	return flowIDPrefixOperation + endpoint.Method + " " + endpoint.Path
 }
 
 func updateFlowNode(graph *FlowGraph, id string, name string, source string, inferred bool) {
@@ -149,7 +149,7 @@ func appendFlowEdge(graph *FlowGraph, edge FlowEdge) {
 }
 
 func removeUnknownOutbound(graph *FlowGraph, routeID string) {
-	outboundID := routeID + ":outbound:unknown"
+	outboundID := routeID + flowUnknownOutboundID
 	nodes := graph.Nodes[:0]
 	for _, node := range graph.Nodes {
 		if node.ID != outboundID {

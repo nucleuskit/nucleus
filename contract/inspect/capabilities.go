@@ -30,16 +30,16 @@ func capabilityGraph(m manifest.Manifest, imports []string) []CapabilityNode {
 
 func manifestCapabilityProvider(m manifest.Manifest, capability string) string {
 	if values, ok := m.Nucleus.Providers[capability]; ok {
-		if text, _ := values["provider"].(string); strings.TrimSpace(text) != "" {
+		if text, _ := values[providerConfigKey].(string); strings.TrimSpace(text) != "" {
 			return strings.TrimSpace(text)
 		}
 	}
 	var value any
 	switch capability {
 	case "sql":
-		value = m.Nucleus.SQL["provider"]
+		value = m.Nucleus.SQL[providerConfigKey]
 	case "mongo":
-		value = m.Nucleus.Mongo["provider"]
+		value = m.Nucleus.Mongo[providerConfigKey]
 	default:
 		return ""
 	}
@@ -70,7 +70,7 @@ func capabilityProvider(capability string, imports []string) string {
 		"profiler":     {"pyroscope"},
 	}
 	for _, provider := range providers[capability] {
-		module := "anniext.cn/spelens-gud/nucleus/bridge/" + provider
+		module := moduleBridgeRoot + "/" + provider
 		if len(matchingImports(module, imports)) > 0 {
 			return provider
 		}
@@ -82,49 +82,49 @@ func capabilityProvider(capability string, imports []string) string {
 func CapabilityModule(capability string) string {
 	switch capability {
 	case "http":
-		return "anniext.cn/spelens-gud/nucleus/runtime/http"
+		return moduleRuntime + "/http"
 	case "grpc":
-		return "anniext.cn/spelens-gud/nucleus/runtime/grpc"
+		return moduleRuntime + "/grpc"
 	case "worker":
-		return "anniext.cn/spelens-gud/nucleus/runtime/worker"
+		return moduleRuntime + "/worker"
 	case "log":
-		return "anniext.cn/spelens-gud/nucleus/cap/log"
+		return moduleCapRoot + "/log"
 	case "trace":
-		return "anniext.cn/spelens-gud/nucleus/cap/trace"
+		return moduleCapRoot + "/trace"
 	case "config":
-		return "anniext.cn/spelens-gud/nucleus/cap/config"
+		return moduleCapRoot + "/config"
 	case "httpclient":
-		return "anniext.cn/spelens-gud/nucleus/cap/httpclient"
+		return moduleCapRoot + "/httpclient"
 	case "transport":
-		return "anniext.cn/spelens-gud/nucleus/cap/transport"
+		return moduleCapRoot + "/transport"
 	case "discovery":
-		return "anniext.cn/spelens-gud/nucleus/cap/discovery"
+		return moduleCapRoot + "/discovery"
 	case "metric":
-		return "anniext.cn/spelens-gud/nucleus/cap/metric"
+		return moduleCapRoot + "/metric"
 	case "auth":
-		return "anniext.cn/spelens-gud/nucleus/cap/auth"
+		return moduleCapRoot + "/auth"
 	case "health":
-		return "anniext.cn/spelens-gud/nucleus/cap/health"
+		return moduleCapRoot + "/health"
 	case "sql":
-		return "anniext.cn/spelens-gud/nucleus/cap/sql"
+		return moduleCapRoot + "/sql"
 	case "redis":
-		return "anniext.cn/spelens-gud/nucleus/cap/redis"
+		return moduleCapRoot + "/redis"
 	case "mongo":
-		return "anniext.cn/spelens-gud/nucleus/cap/mongo"
+		return moduleCapRoot + "/mongo"
 	case "kv":
-		return "anniext.cn/spelens-gud/nucleus/cap/kv"
+		return moduleCapRoot + "/kv"
 	case "mq":
-		return "anniext.cn/spelens-gud/nucleus/cap/mq"
+		return moduleCapRoot + "/mq"
 	case "store":
-		return "anniext.cn/spelens-gud/nucleus/cap/store"
+		return moduleCapRoot + "/store"
 	case "lock":
-		return "anniext.cn/spelens-gud/nucleus/cap/lock"
+		return moduleCapRoot + "/lock"
 	case "sentinel":
-		return "anniext.cn/spelens-gud/nucleus/cap/sentinel"
+		return moduleCapRoot + "/sentinel"
 	case "errortracker":
-		return "anniext.cn/spelens-gud/nucleus/cap/errortracker"
+		return moduleCapRoot + "/errortracker"
 	case "profiler":
-		return "anniext.cn/spelens-gud/nucleus/cap/profiler"
+		return moduleCapRoot + "/profiler"
 	default:
 		return ""
 	}

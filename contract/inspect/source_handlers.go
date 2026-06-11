@@ -15,7 +15,7 @@ import (
 func collectRuntimeHTTPHandlers(dir string, routes []openapi.Route) []sourceRouteHandler {
 	operations := map[string]string{}
 	for _, route := range routes {
-		operations[route.Method+" "+route.Path] = route.OperationID
+		operations[route.Method+routeKeySeparator+route.Path] = route.OperationID
 	}
 	var handlers []sourceRouteHandler
 	_ = filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
@@ -25,7 +25,7 @@ func collectRuntimeHTTPHandlers(dir string, routes []openapi.Route) []sourceRout
 			}
 			return nil
 		}
-		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if !strings.HasSuffix(path, goSourceExtension) || strings.HasSuffix(path, goTestSourceExtension) {
 			return nil
 		}
 		relPath, err := filepath.Rel(dir, path)
@@ -48,21 +48,21 @@ func collectRuntimeHTTPHandlers(dir string, routes []openapi.Route) []sourceRout
 				return true
 			}
 			methodName := selectorName(call.Fun)
-			if methodName == "RegisterRoutes" && generatedHTTPRegisterRoutes(call.Fun, generatedHTTPAliases) && generatedHTTPRoutesFresh(dir) {
+			if methodName == selectorRegisterRoutes && generatedHTTPRegisterRoutes(call.Fun, generatedHTTPAliases) && generatedHTTPRoutesFresh(dir) {
 				position := fileSet.Position(call.Pos())
-				source := relSlash + ":" + strconv.Itoa(position.Line)
+				source := relSlash + sourceLineSeparator + strconv.Itoa(position.Line)
 				for _, route := range routes {
 					handlers = append(handlers, sourceRouteHandler{
 						Method:      route.Method,
 						Path:        route.Path,
 						OperationID: route.OperationID,
-						Name:        "generated route binder dispatch",
+						Name:        generatedRouteBinderName,
 						Source:      source,
 					})
 				}
 				return true
 			}
-			if methodName != "Handle" && methodName != "RegisterWellKnown" {
+			if methodName != selectorHandle && methodName != selectorRegisterWellKnown {
 				return true
 			}
 			handler, ok := routeHandlerFromCall(fileSet, relSlash, call, methodName, operations)
@@ -80,11 +80,11 @@ func generatedHTTPAdapterAliases(file *ast.File) map[string]bool {
 	aliases := map[string]bool{}
 	for _, spec := range file.Imports {
 		importPath := strings.Trim(spec.Path.Value, `"`)
-		if !strings.HasSuffix(importPath, "/internal/adapter/http/gen") {
+		if !strings.HasSuffix(importPath, "/"+generatedHTTPAdapterTarget) {
 			continue
 		}
 		name := filepath.Base(importPath)
-		if spec.Name != nil && spec.Name.Name != "_" && spec.Name.Name != "." {
+		if spec.Name != nil && spec.Name.Name != identifierBlankImport && spec.Name.Name != identifierDotImport {
 			name = spec.Name.Name
 		}
 		aliases[name] = true
@@ -94,7 +94,7 @@ func generatedHTTPAdapterAliases(file *ast.File) map[string]bool {
 
 func generatedHTTPRegisterRoutes(expr ast.Expr, aliases map[string]bool) bool {
 	selector, ok := expr.(*ast.SelectorExpr)
-	if !ok || selector.Sel.Name != "RegisterRoutes" {
+	if !ok || selector.Sel.Name != selectorRegisterRoutes {
 		return false
 	}
 	ident, ok := selector.X.(*ast.Ident)
@@ -106,13 +106,13 @@ func generatedHTTPRoutesFresh(dir string) bool {
 	if err != nil || sourceHash == "" {
 		return false
 	}
-	targetHash, err := ReadGeneratedHash(dir, "internal/adapter/http/gen")
+	targetHash, err := ReadGeneratedHash(dir, generatedHTTPAdapterTarget)
 	return err == nil && targetHash == sourceHash
 }
 
 func routeHandlerFromCall(fileSet *token.FileSet, relPath string, call *ast.CallExpr, methodName string, operations map[string]string) (sourceRouteHandler, bool) {
 	switch methodName {
-	case "Handle":
+	case selectorHandle:
 		if len(call.Args) < 3 {
 			return sourceRouteHandler{}, false
 		}
@@ -129,16 +129,16 @@ func routeHandlerFromCall(fileSet *token.FileSet, relPath string, call *ast.Call
 			return sourceRouteHandler{}, false
 		}
 		position := fileSet.Position(function.Pos())
-		operationID := operations[method+" "+path]
+		operationID := operations[method+routeKeySeparator+path]
 		return sourceRouteHandler{
 			Method:      method,
 			Path:        path,
 			OperationID: operationID,
-			Name:        method + " " + path + " handler",
-			Source:      relPath + ":" + strconv.Itoa(position.Line),
+			Name:        method + routeKeySeparator + path + handlerNameSuffix,
+			Source:      relPath + sourceLineSeparator + strconv.Itoa(position.Line),
 			UsesLog:     funcLitUsesLog(function),
 		}, true
-	case "RegisterWellKnown":
+	case selectorRegisterWellKnown:
 		if len(call.Args) < 1 {
 			return sourceRouteHandler{}, false
 		}
@@ -147,14 +147,14 @@ func routeHandlerFromCall(fileSet *token.FileSet, relPath string, call *ast.Call
 			return sourceRouteHandler{}, false
 		}
 		position := fileSet.Position(function.Pos())
-		const method = "GET"
-		const path = "/.well-known/nucleus.json"
+		const method = httpMethodGet
+		const path = wellKnownNucleusPath
 		return sourceRouteHandler{
 			Method:      method,
 			Path:        path,
-			OperationID: operations[method+" "+path],
-			Name:        method + " " + path + " handler",
-			Source:      relPath + ":" + strconv.Itoa(position.Line),
+			OperationID: operations[method+routeKeySeparator+path],
+			Name:        method + routeKeySeparator + path + handlerNameSuffix,
+			Source:      relPath + sourceLineSeparator + strconv.Itoa(position.Line),
 			UsesLog:     funcLitUsesLog(function),
 		}, true
 	default:

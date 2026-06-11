@@ -67,7 +67,7 @@ type routeRequestBody struct {
 
 // LoadRouteRegistry loads HTTP routes from api/openapi.yaml.
 func LoadRouteRegistry(dir string) ([]Route, error) {
-	path := filepath.Join(dir, "api", "openapi.yaml")
+	path := filepath.Join(dir, apiDirName, openAPIFileName)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -108,13 +108,13 @@ func LoadRouteRegistry(dir string) ([]Route, error) {
 
 func (item routePathItem) operations() map[string]routeOperation {
 	candidates := map[string]*routeOperation{
-		"GET":     item.Get,
-		"POST":    item.Post,
-		"PUT":     item.Put,
-		"PATCH":   item.Patch,
-		"DELETE":  item.Delete,
-		"HEAD":    item.Head,
-		"OPTIONS": item.Options,
+		methodGet:     item.Get,
+		methodPost:    item.Post,
+		methodPut:     item.Put,
+		methodPatch:   item.Patch,
+		methodDelete:  item.Delete,
+		methodHead:    item.Head,
+		methodOptions: item.Options,
 	}
 	operations := make(map[string]routeOperation, len(candidates))
 	for method, operation := range candidates {

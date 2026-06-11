@@ -8,11 +8,11 @@ import (
 )
 
 func isGeneratedSourcePath(path string) bool {
-	return strings.HasPrefix(path, "contract/gen/") ||
-		strings.HasPrefix(path, "internal/adapter/http/gen/") ||
-		strings.HasPrefix(path, "internal/adapter/grpc/gen/") ||
-		strings.Contains(path, "/internal/adapter/http/gen/") ||
-		strings.Contains(path, "/internal/adapter/grpc/gen/")
+	return strings.HasPrefix(path, contractGeneratedTarget+"/") ||
+		strings.HasPrefix(path, generatedHTTPAdapterTarget+"/") ||
+		strings.HasPrefix(path, generatedGRPCAdapterTarget+"/") ||
+		strings.Contains(path, "/"+generatedHTTPAdapterTarget+"/") ||
+		strings.Contains(path, "/"+generatedGRPCAdapterTarget+"/")
 }
 
 func selectorName(expr ast.Expr) string {
@@ -31,20 +31,20 @@ func httpMethodLiteral(expr ast.Expr) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	if ident, ok := selected.X.(*ast.Ident); !ok || ident.Name != "http" {
+	if ident, ok := selected.X.(*ast.Ident); !ok || ident.Name != identifierHTTP {
 		return "", false
 	}
 	switch selected.Sel.Name {
-	case "MethodGet":
-		return "GET", true
-	case "MethodPost":
-		return "POST", true
-	case "MethodPut":
-		return "PUT", true
-	case "MethodPatch":
-		return "PATCH", true
-	case "MethodDelete":
-		return "DELETE", true
+	case selectorHTTPMethodGet:
+		return httpMethodGet, true
+	case selectorHTTPMethodPost:
+		return httpMethodPost, true
+	case selectorHTTPMethodPut:
+		return httpMethodPut, true
+	case selectorHTTPMethodPatch:
+		return httpMethodPatch, true
+	case selectorHTTPMethodDelete:
+		return httpMethodDelete, true
 	default:
 		return "", false
 	}
@@ -77,11 +77,11 @@ func funcLitUsesLog(fn *ast.FuncLit) bool {
 			return true
 		}
 		receiver, ok := selected.X.(*ast.Ident)
-		if !ok || !strings.Contains(strings.ToLower(receiver.Name), "log") {
+		if !ok || !strings.Contains(strings.ToLower(receiver.Name), capabilityLog) {
 			return true
 		}
 		switch selected.Sel.Name {
-		case "Debug", "Info", "Warn", "Error":
+		case selectorLogDebug, selectorLogInfo, selectorLogWarn, selectorLogError:
 			found = true
 			return false
 		default:
@@ -93,7 +93,7 @@ func funcLitUsesLog(fn *ast.FuncLit) bool {
 
 func shouldSkipSourceDir(name string) bool {
 	switch name {
-	case ".git", ".gitnexus", "vendor", "node_modules":
+	case skipDirGit, skipDirGitNexus, skipDirVendor, skipDirNodeModules:
 		return true
 	default:
 		return false
@@ -138,7 +138,7 @@ func exportedOperationName(operationID string) string {
 }
 
 func paramTarget(handler sourceFunction, name string) string {
-	if name == "" || name == "body.required" {
+	if name == "" || name == flowRequestBodyName {
 		return ""
 	}
 	for _, param := range handler.Params {

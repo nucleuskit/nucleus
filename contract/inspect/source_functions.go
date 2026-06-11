@@ -19,7 +19,7 @@ func collectSourceFunctions(dir string) []sourceFunction {
 			}
 			return nil
 		}
-		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if !strings.HasSuffix(path, goSourceExtension) || strings.HasSuffix(path, goTestSourceExtension) {
 			return nil
 		}
 		relPath, err := filepath.Rel(dir, path)
@@ -35,7 +35,7 @@ func collectSourceFunctions(dir string) []sourceFunction {
 		if err != nil {
 			return nil
 		}
-		importsHTTPClient := fileImports(file, "anniext.cn/spelens-gud/nucleus/cap/httpclient")
+		importsHTTPClient := fileImports(file, moduleCapRoot+"/httpclient")
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
@@ -44,11 +44,11 @@ func collectSourceFunctions(dir string) []sourceFunction {
 			position := fileSet.Position(fn.Pos())
 			functions = append(functions, sourceFunction{
 				Name:           fn.Name.Name,
-				Source:         relSlash + ":" + strconv.Itoa(position.Line),
+				Source:         relSlash + sourceLineSeparator + strconv.Itoa(position.Line),
 				Params:         funcParams(fn),
 				Calls:          funcCalls(fn),
-				Domain:         strings.Contains(relSlash, "internal/domain/"),
-				UsesHTTPClient: importsHTTPClient && funcUsesSelector(fn, "Do"),
+				Domain:         strings.Contains(relSlash, domainSourcePathPart),
+				UsesHTTPClient: importsHTTPClient && funcUsesSelector(fn, selectorHTTPClientDo),
 			})
 		}
 		return nil

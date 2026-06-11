@@ -51,16 +51,16 @@ func enrichFlowGraphFromSource(dir string, routes []openapi.Route, graph *FlowGr
 		updateFlowNode(graph, handlerID, handler.Name, handler.Source, true)
 		for i := range graph.Params {
 			if graph.Params[i].OperationID == route.OperationID {
-				target := paramTarget(handler, strings.TrimPrefix(graph.Params[i].Name, "path."))
+				target := paramTarget(handler, strings.TrimPrefix(graph.Params[i].Name, flowParamPrefixPath))
 				if target == "" {
-					target = paramTarget(handler, strings.TrimPrefix(graph.Params[i].Name, "query."))
+					target = paramTarget(handler, strings.TrimPrefix(graph.Params[i].Name, flowParamPrefixQuery))
 				}
 				if target == "" {
-					target = paramTarget(handler, strings.TrimPrefix(graph.Params[i].Name, "header."))
+					target = paramTarget(handler, strings.TrimPrefix(graph.Params[i].Name, flowParamPrefixHeader))
 				}
 				if target != "" {
 					graph.Params[i].Target = target
-					graph.Params[i].Confidence = "source"
+					graph.Params[i].Confidence = flowSourceConfidence
 					graph.Params[i].Inferred = true
 				}
 			}
@@ -70,10 +70,10 @@ func enrichFlowGraphFromSource(dir string, routes []openapi.Route, graph *FlowGr
 			if !ok || !callee.Domain {
 				continue
 			}
-			domainID := "domain:" + callee.Name
+			domainID := flowIDPrefixDomain + callee.Name
 			appendFlowNode(graph, FlowNode{
 				ID:          domainID,
-				Kind:        "domain",
+				Kind:        flowNodeKindDomain,
 				Name:        callee.Name,
 				Method:      route.Method,
 				Path:        route.Path,
@@ -81,20 +81,20 @@ func enrichFlowGraphFromSource(dir string, routes []openapi.Route, graph *FlowGr
 				Source:      callee.Source,
 				Inferred:    true,
 			})
-			appendFlowEdge(graph, FlowEdge{From: handlerID, To: domainID, Kind: "call", Inferred: true})
+			appendFlowEdge(graph, FlowEdge{From: handlerID, To: domainID, Kind: flowEdgeKindCall, Inferred: true})
 			if callee.UsesHTTPClient {
-				outboundID := domainID + ":outbound:httpclient.Do"
+				outboundID := domainID + flowHTTPClientOutbound
 				appendFlowNode(graph, FlowNode{
 					ID:          outboundID,
-					Kind:        "outbound",
-					Name:        "httpclient.Do",
+					Kind:        flowNodeKindOutbound,
+					Name:        flowHTTPClientDoName,
 					Method:      route.Method,
 					Path:        route.Path,
 					OperationID: route.OperationID,
 					Source:      callee.Source,
 					Inferred:    true,
 				})
-				appendFlowEdge(graph, FlowEdge{From: domainID, To: outboundID, Kind: "outbound_call", Inferred: true})
+				appendFlowEdge(graph, FlowEdge{From: domainID, To: outboundID, Kind: flowEdgeKindOutboundCall, Inferred: true})
 			}
 		}
 	}
@@ -107,10 +107,10 @@ func enrichFlowGraphFromRuntimeHandlers(routes []openapi.Route, handlers []sourc
 	}
 	byRoute := map[string]sourceRouteHandler{}
 	for _, handler := range handlers {
-		byRoute[handler.Method+" "+handler.Path] = handler
+		byRoute[handler.Method+routeKeySeparator+handler.Path] = handler
 	}
 	for _, route := range routes {
-		handler, ok := byRoute[route.Method+" "+route.Path]
+		handler, ok := byRoute[route.Method+routeKeySeparator+route.Path]
 		if !ok {
 			continue
 		}
@@ -118,31 +118,31 @@ func enrichFlowGraphFromRuntimeHandlers(routes []openapi.Route, handlers []sourc
 		handlerID := flowOperationID(endpoint)
 		updateFlowNode(graph, handlerID, handler.Name, handler.Source, true)
 		removeUnknownOutbound(graph, flowRouteID(endpoint))
-		responseID := handlerID + ":response:envelope"
+		responseID := handlerID + flowIDPartResponse + "envelope"
 		appendFlowNode(graph, FlowNode{
 			ID:          responseID,
-			Kind:        "response",
-			Name:        "runtime/http.ResponseEnvelope",
+			Kind:        flowNodeKindResponse,
+			Name:        responseEnvelopeName,
 			Method:      route.Method,
 			Path:        route.Path,
 			OperationID: route.OperationID,
-			Source:      "runtime/http/server.go",
+			Source:      runtimeHTTPServerSource,
 			Inferred:    false,
 		})
-		appendFlowEdge(graph, FlowEdge{From: handlerID, To: responseID, Kind: "encodes_response", Inferred: false})
+		appendFlowEdge(graph, FlowEdge{From: handlerID, To: responseID, Kind: flowEdgeKindEncodesResponse, Inferred: false})
 		if handler.UsesLog {
-			capID := handlerID + ":capability:log"
+			capID := handlerID + flowIDPartCapability + capabilityLog
 			appendFlowNode(graph, FlowNode{
 				ID:          capID,
-				Kind:        "capability",
-				Name:        "log",
+				Kind:        flowNodeKindCapability,
+				Name:        capabilityLog,
 				Method:      route.Method,
 				Path:        route.Path,
 				OperationID: route.OperationID,
 				Source:      handler.Source,
 				Inferred:    true,
 			})
-			appendFlowEdge(graph, FlowEdge{From: handlerID, To: capID, Kind: "uses_capability", Inferred: true})
+			appendFlowEdge(graph, FlowEdge{From: handlerID, To: capID, Kind: flowEdgeKindUsesCapability, Inferred: true})
 		}
 	}
 }

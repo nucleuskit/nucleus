@@ -10,7 +10,7 @@ import (
 )
 
 func collectConfigKeys(dir string) []ConfigKey {
-	configDir := filepath.Join(dir, "configs")
+	configDir := filepath.Join(dir, configDirName)
 	entries, err := os.ReadDir(configDir)
 	if err != nil {
 		return nil
@@ -21,10 +21,10 @@ func collectConfigKeys(dir string) []ConfigKey {
 			continue
 		}
 		name := entry.Name()
-		if strings.Contains(name, "local") || strings.Contains(name, "secret") {
+		if strings.Contains(name, configLocalNamePart) || strings.Contains(name, configSecretNamePart) {
 			continue
 		}
-		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
+		if !strings.HasSuffix(name, configYAMLExtension) && !strings.HasSuffix(name, configYMLExtension) {
 			continue
 		}
 		path := filepath.Join(configDir, name)
@@ -58,7 +58,7 @@ func configKeysFromValue(source string, prefix string, value any) []ConfigKey {
 		for key, item := range typed {
 			child := key
 			if prefix != "" {
-				child = prefix + "." + key
+				child = prefix + configKeySeparator + key
 			}
 			keys = append(keys, configKeysFromValue(source, child, item)...)
 		}
@@ -80,14 +80,14 @@ func configKeysFromValue(source string, prefix string, value any) []ConfigKey {
 
 func configEnvPlaceholder(value any) (string, string) {
 	text, ok := value.(string)
-	if !ok || !strings.HasPrefix(text, "${") || !strings.HasSuffix(text, "}") {
+	if !ok || !strings.HasPrefix(text, configEnvPrefix) || !strings.HasSuffix(text, configEnvSuffix) {
 		if ok {
 			return "", text
 		}
 		return "", ""
 	}
-	inner := strings.TrimSuffix(strings.TrimPrefix(text, "${"), "}")
-	name, fallback, hasFallback := strings.Cut(inner, ":-")
+	inner := strings.TrimSuffix(strings.TrimPrefix(text, configEnvPrefix), configEnvSuffix)
+	name, fallback, hasFallback := strings.Cut(inner, configEnvFallbackSep)
 	if !hasFallback {
 		return strings.TrimSpace(name), ""
 	}
