@@ -122,6 +122,5 @@ Nucleus is licensed under the [Apache License 2.0](LICENSE).
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nucleuskit/nucleus&type=date&theme=dark&legend=top-left" />
    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=nucleuskit/nucleus&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=nucleuskit/nucleus&type=date&legend=top-left" />
  </picture>
 </a>
