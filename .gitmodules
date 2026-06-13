@@ -1,0 +1,28 @@
+[submodule "bridge"]
+	path = bridge
+	url = https://github.com/nucleuskit/bridge.git
+	branch = main
+[submodule "cap"]
+	path = cap
+	url = https://github.com/nucleuskit/cap.git
+	branch = main
+[submodule "contract"]
+	path = contract
+	url = https://github.com/nucleuskit/contract.git
+	branch = main
+[submodule "core"]
+	path = core
+	url = https://github.com/nucleuskit/core.git
+	branch = main
+[submodule "runtime/grpc"]
+	path = runtime/grpc
+	url = https://github.com/nucleuskit/grpc.git
+	branch = main
+[submodule "runtime/http"]
+	path = runtime/http
+	url = https://github.com/nucleuskit/http.git
+	branch = main
+[submodule "runtime/worker"]
+	path = runtime/worker
+	url = https://github.com/nucleuskit/worker.git
+	branch = main
