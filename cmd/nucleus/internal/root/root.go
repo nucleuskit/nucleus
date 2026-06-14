@@ -2,6 +2,7 @@ package root
 
 import (
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/describe"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/validate"
 	"github.com/spf13/cobra"
 )
 
@@ -28,6 +29,8 @@ func New() *cobra.Command {
 		Dir:            &opts.dir,
 		SchemaOverride: &opts.schema,
 	}))
-
+	cmd.AddCommand(validate.NewCommand(validate.Config{
+		Dir: &opts.dir,
+	}))
 	return cmd
 }

@@ -28,15 +28,22 @@ Before starting a large change, open an issue or discussion so maintainers can a
 4. Run the relevant verification commands.
 5. Open a pull request using the PR template.
 
-Recommended commands once the source tree is available:
+Recommended commands once the source tree is available. Run service-scoped
+commands against a service directory; the bundled example lives in
+`example/hello-http`.
 
 ```bash
 go test ./...
 go test ./... -race -count=1
-go run ./cmd/nucleus validate --dir .
+go run ./cmd/nucleus validate --dir example/hello-http
+go run ./cmd/nucleus validate --dir example/hello-http --json
 go run ./cmd/nucleus lint --dir .
 go run ./cmd/nucleus verify --dir . --json
 ```
+
+Use `nucleus validate` for manifest and contract source legality. Keep project
+convention checks in `nucleus lint`, and use `nucleus verify` for evidence
+orchestration across validation, linting, builds, and tests.
 
 If you change contracts, generated code, schema files, CLI flags, or directory layout, update the related docs in the same pull request.
 
