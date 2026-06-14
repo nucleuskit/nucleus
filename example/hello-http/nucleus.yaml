@@ -24,8 +24,6 @@ ai:
     - internal/adapter/http/gen/**
   forbidden:
     - configs/*.local.yaml
-  generated:
-    - internal/adapter/http/gen
 nucleus:
   providers:
     log:
