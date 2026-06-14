@@ -31,10 +31,8 @@ jobs:
         run: |
           set -euo pipefail
           go version
-          if [ -f go.work ]; then
-            export GOWORK="$PWD/go.work"
-            go env GOWORK
-            go work sync
+          if [ -d contract ]; then
+            go mod edit -replace github.com/nucleuskit/contract=./contract
           fi
           go test ./...
 
