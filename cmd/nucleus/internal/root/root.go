@@ -2,6 +2,7 @@ package root
 
 import (
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/describe"
+	nucleuslint "github.com/nucleuskit/nucleus/cmd/nucleus/internal/lint"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/validate"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +31,9 @@ func New() *cobra.Command {
 		SchemaOverride: &opts.schema,
 	}))
 	cmd.AddCommand(validate.NewCommand(validate.Config{
+		Dir: &opts.dir,
+	}))
+	cmd.AddCommand(nucleuslint.NewCommand(nucleuslint.Config{
 		Dir: &opts.dir,
 	}))
 	return cmd
