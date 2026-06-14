@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Set up Go
         if: hashFiles('go.mod') != ''
@@ -29,8 +31,8 @@ jobs:
         run: |
           set -euo pipefail
           go version
-          if [ -f go.work ]; then
-            go work sync
+          if [ -d contract ]; then
+            go mod edit -replace github.com/nucleuskit/contract=./contract
           fi
           go test ./...
 

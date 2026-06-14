@@ -55,10 +55,11 @@ Nucleus separates capability declaration from infrastructure implementation:
 
 ### AI-Safe Change Loop
 
-The intended workflow is:
+The intended workflow inside a service directory is:
 
 ```text
 nucleus describe --json
+nucleus validate
 nucleus plan --task "change request" --json
 nucleus gen
 nucleus lint
@@ -66,6 +67,15 @@ nucleus verify
 ```
 
 The goal is not just to generate code. The goal is to produce evidence that the change respected contracts, manifests, generated freshness, dependency boundaries, and verification commands.
+
+`describe` emits the service facts that agents and reviewers consume. `validate`
+checks manifest and contract source legality before later workflow steps. `lint`
+checks project conventions and risk rules, while `verify` executes the validation,
+lint, build, and test evidence pipeline.
+
+For the bundled example, run `nucleus validate --dir example/hello-http`.
+Successful human output includes a short validation summary; `--json` emits the
+same result with stable `ok`, `summary`, and `diagnostics` fields.
 
 ## Project Shape
 
