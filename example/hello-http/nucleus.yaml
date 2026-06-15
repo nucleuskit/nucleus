@@ -22,6 +22,9 @@ ai:
     - internal/**
   readonly:
     - internal/adapter/http/gen/**
+  generated:
+    - contract/gen
+    - internal/adapter/http/gen
   forbidden:
     - configs/*.local.yaml
 nucleus:
