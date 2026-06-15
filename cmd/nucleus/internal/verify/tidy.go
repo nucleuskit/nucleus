@@ -11,6 +11,8 @@ import (
 type fileSnapshot struct {
 	exists bool
 	hash   [sha256.Size]byte
+	mode   os.FileMode
+	data   []byte
 }
 
 func runTidyCommand(dir string) verifyStep {
@@ -31,6 +33,13 @@ func runTidyCommand(dir string) verifyStep {
 		return step
 	}
 	step.ChangedPaths = changedModuleFiles(before, after)
+	if len(step.ChangedPaths) > 0 {
+		if err := restoreModuleFiles(dir, before); err != nil {
+			step.OK = false
+			step.Error = "restore module files failed"
+			return step
+		}
+	}
 	if step.OK && len(step.ChangedPaths) > 0 {
 		step.OK = false
 		step.Error = "go mod tidy changed module files"
@@ -50,12 +59,38 @@ func snapshotModuleFiles(dir string) (map[string]fileSnapshot, error) {
 			}
 			return nil, err
 		}
+		info, err := os.Stat(filepath.Join(dir, name))
+		if err != nil {
+			return nil, err
+		}
 		snapshots[name] = fileSnapshot{
 			exists: true,
 			hash:   sha256.Sum256(data),
+			mode:   info.Mode().Perm(),
+			data:   data,
 		}
 	}
 	return snapshots, nil
+}
+
+func restoreModuleFiles(dir string, snapshots map[string]fileSnapshot) error {
+	for name, snapshot := range snapshots {
+		path := filepath.Join(dir, name)
+		if !snapshot.exists {
+			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
+			continue
+		}
+		mode := snapshot.mode
+		if mode == 0 {
+			mode = 0o644
+		}
+		if err := os.WriteFile(path, snapshot.data, mode); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func changedModuleFiles(before map[string]fileSnapshot, after map[string]fileSnapshot) []string {

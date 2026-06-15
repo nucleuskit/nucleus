@@ -76,7 +76,7 @@ func runGoCommand(dir string, phase string, args []string) verifyStep {
 		Phase:   phase,
 		Command: "go " + strings.Join(args, " "),
 		OK:      err == nil,
-		Output:  strings.TrimSpace(output.String()),
+		Output:  sanitizeCommandOutput(output.String(), dir),
 	}
 	if err != nil {
 		step.Error = err.Error()

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/nucleuskit/contract/inspect"
@@ -221,14 +222,15 @@ func TestCommandJSONGeneratedFreshnessSuccess(t *testing.T) {
 
 func TestCommandJSONTidyChangedModuleFilesFailure(t *testing.T) {
 	dir := t.TempDir()
-	writeVerifyFile(t, dir, "go.mod", `module example.com/demo
+	originalGoMod := `module example.com/demo
 
 go 1.26.3
 
 require example.com/unused v0.0.0
 
 replace example.com/unused => ./unused
-`)
+`
+	writeVerifyFile(t, dir, "go.mod", originalGoMod)
 	writeVerifyFile(t, dir, "demo.go", "package demo\n")
 	writeVerifyFile(t, dir, "unused/go.mod", "module example.com/unused\n\ngo 1.26.3\n")
 	writeVerifyFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
@@ -276,6 +278,32 @@ capabilities: []
 	}
 	if _, ok := findStep(output.Steps, "import"); ok {
 		t.Fatalf("steps = %#v, import should not run after tidy failure", output.Steps)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil {
+		t.Fatalf("read go.mod after verify: %v", err)
+	}
+	if string(data) != originalGoMod {
+		t.Fatalf("go.mod changed after verify:\n%s", data)
+	}
+}
+
+func TestSanitizeCommandOutputRedactsSecretsPathsAndLongOutput(t *testing.T) {
+	dir := t.TempDir()
+	writeVerifyFile(t, dir, "go.mod", "module private.example.com/demo\n\ngo 1.26.3\n")
+	raw := dir + "/demo.go: token=abc123 password: hunter2 Authorization: Bearer abc.def private.example.com/demo/internal\n" +
+		strings.Repeat("x", maxCommandOutputRunes+16)
+
+	output := sanitizeCommandOutput(raw, dir)
+	for _, forbidden := range []string{dir, "abc123", "hunter2", "abc.def", "private.example.com/demo"} {
+		if strings.Contains(output, forbidden) {
+			t.Fatalf("sanitizeCommandOutput() leaked %q in %q", forbidden, output)
+		}
+	}
+	for _, want := range []string{"token=[REDACTED]", "password: [REDACTED]", "Authorization: Bearer [REDACTED]", "<module>/internal", "[output truncated]"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("sanitizeCommandOutput() = %q, want %q", output, want)
+		}
 	}
 }
 

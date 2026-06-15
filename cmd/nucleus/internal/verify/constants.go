@@ -38,4 +38,7 @@ const (
 	commandWorkingDir         = "."
 	statusPassed              = "passed"
 	statusFailed              = "failed"
+	redactedValue             = "[REDACTED]"
+	truncatedOutputNotice     = "[output truncated]"
+	maxCommandOutputRunes     = 32768
 )
