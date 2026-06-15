@@ -73,6 +73,12 @@ checks manifest and contract source legality before later workflow steps. `lint`
 checks project conventions and risk rules, while `verify` executes the validation,
 lint, build, and test evidence pipeline.
 
+`gen` writes reproducible artifacts under generated targets such as
+`contract/gen` and `internal/adapter/http/gen`. Use `nucleus gen --json` when
+automation needs auditable evidence; the result includes
+`result_kind: "nucleus.gen_result"`, `ok`, `source_hash`, generated `files`,
+`summary`, and validation `diagnostics`.
+
 For the bundled example, run `nucleus validate --dir example/hello-http`.
 Successful human output includes a short validation summary; `--json` emits the
 same result with stable `ok`, `summary`, and `diagnostics` fields.

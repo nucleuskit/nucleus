@@ -2,9 +2,11 @@ package root
 
 import (
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/describe"
-	nucleuslint "github.com/nucleuskit/nucleus/cmd/nucleus/internal/lint"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/gen"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/lint"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/plan"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/validate"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/verify"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +37,13 @@ func New() *cobra.Command {
 	cmd.AddCommand(validate.NewCommand(validate.Config{
 		Dir: &opts.dir,
 	}))
-	cmd.AddCommand(nucleuslint.NewCommand(nucleuslint.Config{
+	cmd.AddCommand(lint.NewCommand(lint.Config{
+		Dir: &opts.dir,
+	}))
+	cmd.AddCommand(gen.NewCommand(gen.Config{
+		Dir: &opts.dir,
+	}))
+	cmd.AddCommand(verify.NewCommand(verify.Config{
 		Dir: &opts.dir,
 	}))
 	cmd.AddCommand(plan.NewCommand(plan.Config{

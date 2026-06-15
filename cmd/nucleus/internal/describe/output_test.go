@@ -29,6 +29,18 @@ func TestBuildOutputAddsDescribeMetadata(t *testing.T) {
 	if got := verification["result_kind"]; got != "nucleus.verify_result" {
 		t.Fatalf("verification.result_kind = %v, want nucleus.verify_result", got)
 	}
+	if got := verification["evidence_schema"]; got != verificationEvidenceSchema {
+		t.Fatalf("verification.evidence_schema = %v, want %s", got, verificationEvidenceSchema)
+	}
+	schemaPath := filepath.Join("..", "..", "..", "..", filepath.FromSlash(verificationEvidenceSchema))
+	if _, err := os.Stat(schemaPath); err != nil {
+		t.Fatalf("verification evidence schema %s is not readable: %v", schemaPath, err)
+	}
+	pipeline, ok := verification["pipeline"].([]map[string]any)
+	if !ok {
+		t.Fatalf("verification.pipeline has type %T, want []map[string]any", verification["pipeline"])
+	}
+	assertVerificationPipeline(t, pipeline)
 }
 
 func TestBuildOutputUsesDefaultSchemaVersion(t *testing.T) {
@@ -59,4 +71,43 @@ nucleus: {}
 		t.Fatalf("write nucleus.yaml: %v", err)
 	}
 	return dir
+}
+
+func assertVerificationPipeline(t *testing.T, pipeline []map[string]any) {
+	t.Helper()
+	want := []struct {
+		phase   string
+		command string
+	}{
+		{phaseValidate, commandValidate},
+		{phaseLint, commandLintStrict},
+		{phaseGeneratedFreshness, commandDescribeJSON},
+		{phaseTidy, commandGoModTidy},
+		{phaseImport, commandGoListAll},
+		{phaseBuild, commandGoTestCompileOnly},
+		{phaseTest, commandGoTestAll},
+	}
+	if len(pipeline) != len(want) {
+		t.Fatalf("pipeline length = %d, want %d", len(pipeline), len(want))
+	}
+	for index, item := range pipeline {
+		if got := item["id"]; got != want[index].phase {
+			t.Fatalf("pipeline[%d].id = %v, want %s", index, got, want[index].phase)
+		}
+		if got := item["sequence"]; got != index+1 {
+			t.Fatalf("pipeline[%d].sequence = %v, want %d", index, got, index+1)
+		}
+		if got := item["phase"]; got != want[index].phase {
+			t.Fatalf("pipeline[%d].phase = %v, want %s", index, got, want[index].phase)
+		}
+		if got := item["command"]; got != want[index].command {
+			t.Fatalf("pipeline[%d].command = %v, want %s", index, got, want[index].command)
+		}
+		if got := item["schema_ref"]; got != verificationEvidenceSchema {
+			t.Fatalf("pipeline[%d].schema_ref = %v, want %s", index, got, verificationEvidenceSchema)
+		}
+		if got := item["produces"]; got != verificationResultKind {
+			t.Fatalf("pipeline[%d].produces = %v, want %s", index, got, verificationResultKind)
+		}
+	}
 }
