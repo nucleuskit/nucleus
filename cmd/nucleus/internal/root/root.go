@@ -3,6 +3,7 @@ package root
 import (
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/describe"
 	nucleuslint "github.com/nucleuskit/nucleus/cmd/nucleus/internal/lint"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/plan"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/validate"
 	"github.com/spf13/cobra"
 )
@@ -26,6 +27,7 @@ func New() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&opts.dir, "dir", ".", "service root directory")
 	cmd.PersistentFlags().BoolVar(&opts.verbose, "verbose", false, "enable verbose output")
 	cmd.PersistentFlags().StringVar(&opts.schema, "schema", "", "override describe schema version")
+
 	cmd.AddCommand(describe.NewCommand(describe.Config{
 		Dir:            &opts.dir,
 		SchemaOverride: &opts.schema,
@@ -34,6 +36,9 @@ func New() *cobra.Command {
 		Dir: &opts.dir,
 	}))
 	cmd.AddCommand(nucleuslint.NewCommand(nucleuslint.Config{
+		Dir: &opts.dir,
+	}))
+	cmd.AddCommand(plan.NewCommand(plan.Config{
 		Dir: &opts.dir,
 	}))
 	return cmd
