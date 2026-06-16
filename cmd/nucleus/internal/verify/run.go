@@ -65,6 +65,13 @@ func run(config Config) (verifyResult, error) {
 	return buildResult(steps, diagnostics, findings), nil
 }
 
+// BuildResultForDir runs the full verification pipeline for a service directory
+// and returns the rendered verification result even when verification fails.
+func BuildResultForDir(dir string) verifyResult {
+	result, _ := run(Config{Dir: &dir})
+	return result
+}
+
 func runGoCommand(dir string, phase string, args []string) verifyStep {
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
