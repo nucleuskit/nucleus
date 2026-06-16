@@ -88,6 +88,47 @@ func TestCommandHumanDryRunFailureReturnsSentinel(t *testing.T) {
 	}
 }
 
+func TestApplyRejectsSymlinkEditPath(t *testing.T) {
+	dir := t.TempDir()
+	writeApplyService(t, dir, []string{"internal/domain/**"})
+	outsidePath := filepath.Join(dir, "outside.txt")
+	original := "package domain\n\nfunc Message() string { return \"original\" }\n"
+	if err := os.WriteFile(outsidePath, []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	linkPath := filepath.Join(dir, "internal", "domain", "service.go")
+	if err := os.MkdirAll(filepath.Dir(linkPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsidePath, linkPath); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	planPath := filepath.Join(dir, "plan.json")
+	writeApplyFile(t, dir, "plan.json", `{
+  "edits": [
+    {
+      "path": "internal/domain/service.go",
+      "content": "package domain\n"
+    }
+  ]
+}`)
+
+	evidence, err := Apply(dir, planPath)
+	if err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	if evidence["pass"] != false {
+		t.Fatalf("symlink edit should fail: %#v", evidence)
+	}
+	data, err := os.ReadFile(outsidePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != original {
+		t.Fatalf("symlink target changed: %q", data)
+	}
+}
+
 func writeApplyService(t *testing.T, dir string, allowed []string) {
 	t.Helper()
 	writeApplyFile(t, dir, "nucleus.yaml", `schema_version: "1.0"

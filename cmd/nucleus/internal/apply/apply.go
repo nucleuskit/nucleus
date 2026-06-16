@@ -106,8 +106,7 @@ func Apply(dir string, planPath string) (map[string]any, error) {
 			steps = appendSkippedCommands(steps, commands)
 			return applyEvidence("apply", false, steps, rollbackPoints), nil
 		}
-		rollbackPoint, err := buildRollbackPoint(index, path, fullPath)
-		if err != nil {
+		if err := rejectSymlinkPath(dir, fullPath, path); err != nil {
 			steps = append(steps, map[string]any{
 				"id":        fmt.Sprintf("apply-write-%d", index+1),
 				"kind":      "file_write",
@@ -119,7 +118,8 @@ func Apply(dir string, planPath string) (map[string]any, error) {
 			steps = appendSkippedCommands(steps, commands)
 			return applyEvidence("apply", false, steps, rollbackPoints), nil
 		}
-		if err := rejectSymlinkPath(dir, path); err != nil {
+		rollbackPoint, err := buildRollbackPoint(index, path, fullPath)
+		if err != nil {
 			steps = append(steps, map[string]any{
 				"id":        fmt.Sprintf("apply-write-%d", index+1),
 				"kind":      "file_write",
@@ -242,12 +242,19 @@ func resolveEditPath(dir string, path string) (string, error) {
 	return fullPath, nil
 }
 
-func rejectSymlinkPath(dir string, path string) error {
+func rejectSymlinkPath(dir string, fullPath string, displayPath string) error {
 	root, err := filepath.Abs(dir)
 	if err != nil {
 		return err
 	}
-	clean := filepath.Clean(filepath.FromSlash(path))
+	rel, err := filepath.Rel(root, fullPath)
+	if err != nil {
+		return err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("edit path escapes service root: %s", displayPath)
+	}
+	clean := filepath.Clean(rel)
 	current := root
 	for _, part := range strings.Split(clean, string(filepath.Separator)) {
 		if part == "." || part == "" {
@@ -256,7 +263,7 @@ func rejectSymlinkPath(dir string, path string) error {
 		current = filepath.Join(current, part)
 		info, err := os.Lstat(current)
 		if err == nil && info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("edit path contains symlink: %s", path)
+			return fmt.Errorf("edit path contains symlink: %s", displayPath)
 		}
 		if os.IsNotExist(err) {
 			return nil

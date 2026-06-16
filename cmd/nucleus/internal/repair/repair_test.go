@@ -268,6 +268,52 @@ func TestBuildEvidenceRejectsBusinessPatchWithHashMismatch(t *testing.T) {
 	}
 }
 
+func TestBuildEvidenceRejectsBusinessPatchSymlinkPath(t *testing.T) {
+	dir := t.TempDir()
+	writePatchableService(t, dir, []string{"internal/domain/**"})
+	original := "package domain\n\nfunc Message() string { return \"broken\" }\n"
+	outsidePath := filepath.Join(dir, "outside.go")
+	if err := os.WriteFile(outsidePath, []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	linkPath := filepath.Join(dir, "internal", "domain", "service.go")
+	if err := os.MkdirAll(filepath.Dir(linkPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsidePath, linkPath); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	evidencePath := filepath.Join(dir, "evidence.json")
+	writeFile(t, dir, "evidence.json", `{
+  "kind": "nucleus.verify_result",
+  "pass": false,
+  "failure": {
+    "fix_candidate": {
+      "file": "internal/domain/service.go",
+      "find": "return \"broken\"",
+      "replace": "return \"ok\"",
+      "reason": "symlink target must not be patched",
+      "expected_hash": "`+sha256Hex(original)+`"
+    }
+  }
+}`)
+
+	result, err := BuildEvidence(dir, evidencePath, 1)
+	if err != nil {
+		t.Fatalf("BuildEvidence returned error: %v", err)
+	}
+	if result["status"] != "needs_manual_action" {
+		t.Fatalf("symlink patch should require manual action: %#v", result)
+	}
+	data, err := os.ReadFile(outsidePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != original {
+		t.Fatalf("symlink target changed:\n%s", data)
+	}
+}
+
 func writeFile(t *testing.T, dir string, name string, data string) {
 	t.Helper()
 	path := filepath.Join(dir, name)

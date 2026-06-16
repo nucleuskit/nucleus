@@ -119,7 +119,7 @@ func applyPatchCandidate(dir string, evidence map[string]any, candidate patchCan
 	if err != nil {
 		return manualRepairEvidence(maxRounds, evidence["kind"], err.Error())
 	}
-	if err := rejectSymlinkPath(dir, candidate.File); err != nil {
+	if err := rejectSymlinkPath(dir, fullPath, candidate.File); err != nil {
 		return manualRepairEvidence(maxRounds, evidence["kind"], err.Error())
 	}
 	original, err := os.ReadFile(fullPath)
@@ -403,12 +403,19 @@ func resolveRepairPath(dir string, path string) (string, error) {
 	return fullPath, nil
 }
 
-func rejectSymlinkPath(dir string, path string) error {
+func rejectSymlinkPath(dir string, fullPath string, displayPath string) error {
 	root, err := filepath.Abs(dir)
 	if err != nil {
 		return err
 	}
-	clean := filepath.Clean(filepath.FromSlash(path))
+	rel, err := filepath.Rel(root, fullPath)
+	if err != nil {
+		return err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("repair path escapes service root: %s", displayPath)
+	}
+	clean := filepath.Clean(rel)
 	current := root
 	for _, part := range strings.Split(clean, string(filepath.Separator)) {
 		if part == "." || part == "" {
@@ -417,7 +424,7 @@ func rejectSymlinkPath(dir string, path string) error {
 		current = filepath.Join(current, part)
 		info, err := os.Lstat(current)
 		if err == nil && info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("repair path contains symlink: %s", path)
+			return fmt.Errorf("repair path contains symlink: %s", displayPath)
 		}
 		if os.IsNotExist(err) {
 			return nil
