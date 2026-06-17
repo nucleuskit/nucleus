@@ -62,6 +62,7 @@ nucleus describe --json
 nucleus validate
 nucleus plan --task "change request" --json
 nucleus gen
+nucleus scenario --json
 nucleus lint
 nucleus verify
 ```
@@ -78,6 +79,14 @@ lint, build, and test evidence pipeline.
 automation needs auditable evidence; the result includes
 `result_kind: "nucleus.gen_result"`, `ok`, `source_hash`, generated `files`,
 `summary`, and validation `diagnostics`.
+
+`scenario` turns OpenAPI routes, error catalogs, and flow inspection into
+reviewable test suggestions. Use `nucleus scenario --json` for a scenario plan,
+`nucleus scenario --draft-cases --json` to emit executable HTTP case drafts, and
+`nucleus scenario --run-http --base-url http://127.0.0.1:8080 --json` to produce
+explicit opt-in HTTP scenario evidence. Network execution is never implicit:
+`--run-http` and `--cases` require `--base-url`, and captured headers are
+redacted for sensitive keys such as authorization and cookies.
 
 For the bundled example, run `nucleus validate --dir example/hello-http`.
 Successful human output includes a short validation summary; `--json` emits the

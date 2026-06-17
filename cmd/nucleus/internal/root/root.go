@@ -8,6 +8,7 @@ import (
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/lint"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/plan"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/repair"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/scenario"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/validate"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/verify"
 	"github.com/spf13/cobra"
@@ -59,6 +60,9 @@ func New() *cobra.Command {
 		Dir: &opts.dir,
 	}))
 	cmd.AddCommand(repair.NewCommand(repair.Config{
+		Dir: &opts.dir,
+	}))
+	cmd.AddCommand(scenario.NewCommand(scenario.Config{
 		Dir: &opts.dir,
 	}))
 	return cmd

@@ -31,6 +31,7 @@ const (
 	schemaRefEvidence        = "contract/schema/evidence.schema.json"
 	evidenceKindApply        = "nucleus.apply_evidence"
 	evidenceKindExecutor     = "nucleus.executor_evidence"
+	evidenceKindHTTPScenario = "nucleus.http_scenario_evidence"
 	evidenceKindVerify       = "nucleus.verify_result"
 	jsonIndentPrefix         = ""
 	jsonIndentValue          = "  "

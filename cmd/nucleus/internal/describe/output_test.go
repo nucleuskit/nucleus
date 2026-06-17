@@ -41,6 +41,11 @@ func TestBuildOutputAddsDescribeMetadata(t *testing.T) {
 		t.Fatalf("verification.pipeline has type %T, want []map[string]any", verification["pipeline"])
 	}
 	assertVerificationPipeline(t, pipeline)
+	optional, ok := verification["optional_evidence"].([]map[string]any)
+	if !ok {
+		t.Fatalf("verification.optional_evidence has type %T, want []map[string]any", verification["optional_evidence"])
+	}
+	assertOptionalEvidence(t, optional)
 }
 
 func TestBuildOutputUsesDefaultSchemaVersion(t *testing.T) {
@@ -109,5 +114,18 @@ func assertVerificationPipeline(t *testing.T, pipeline []map[string]any) {
 		if got := item["produces"]; got != verificationResultKind {
 			t.Fatalf("pipeline[%d].produces = %v, want %s", index, got, verificationResultKind)
 		}
+	}
+}
+
+func assertOptionalEvidence(t *testing.T, optional []map[string]any) {
+	t.Helper()
+	if len(optional) != 2 {
+		t.Fatalf("optional evidence length = %d, want 2", len(optional))
+	}
+	if optional[0]["produces"] != "nucleus.scenario_plan_result" || optional[0]["required"] != false {
+		t.Fatalf("unexpected scenario plan optional evidence: %#v", optional[0])
+	}
+	if optional[1]["produces"] != evidenceKindHTTPScenario || optional[1]["schema_ref"] != verificationEvidenceSchema || optional[1]["required"] != false {
+		t.Fatalf("unexpected HTTP scenario optional evidence: %#v", optional[1])
 	}
 }

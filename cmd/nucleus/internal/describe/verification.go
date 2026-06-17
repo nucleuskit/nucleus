@@ -15,6 +15,7 @@ func verificationContract() map[string]any {
 		verificationFieldPipeline:       verificationPipeline(),
 		verificationFieldResultKind:     verificationResultKind,
 		verificationFieldEvidenceSchema: verificationEvidenceSchema,
+		verificationFieldOptional:       optionalEvidence(),
 	}
 }
 
@@ -45,4 +46,25 @@ func verificationPipeline() []map[string]any {
 		})
 	}
 	return pipeline
+}
+
+func optionalEvidence() []map[string]any {
+	return []map[string]any{
+		{
+			pipelineFieldID:        "scenario_plan",
+			pipelineFieldPhase:     phaseTest,
+			pipelineFieldCommand:   commandScenarioPlanJSON,
+			pipelineFieldSchemaRef: "",
+			pipelineFieldProduces:  "nucleus.scenario_plan_result",
+			"required":             false,
+		},
+		{
+			pipelineFieldID:        "http_scenario",
+			pipelineFieldPhase:     phaseTest,
+			pipelineFieldCommand:   commandScenarioRunJSON,
+			pipelineFieldSchemaRef: verificationEvidenceSchema,
+			pipelineFieldProduces:  evidenceKindHTTPScenario,
+			"required":             false,
+		},
+	}
 }

@@ -159,7 +159,7 @@ func evidencePolicy() map[string]any {
 		"record_exit_code": true,
 		"redact":           []string{"token", "secret", "password", "dsn"},
 		"schema_ref":       schemaRefEvidence,
-		"accepted_kinds":   []string{evidenceKindApply, evidenceKindExecutor, evidenceKindVerify},
+		"accepted_kinds":   []string{evidenceKindApply, evidenceKindExecutor, evidenceKindHTTPScenario, evidenceKindVerify},
 	}
 }
 
@@ -172,6 +172,8 @@ func commandPhase(command string) string {
 	case strings.Contains(command, " lint "):
 		return commandPhaseLint
 	case strings.Contains(command, " test "):
+		return commandPhaseTest
+	case strings.Contains(command, " scenario ") && scenarioCommandProducesEvidence(command):
 		return commandPhaseTest
 	case strings.Contains(command, " validate "):
 		return commandPhaseValidate
@@ -189,12 +191,19 @@ func commandProduces(command string) string {
 	if strings.Contains(command, " execute ") {
 		return evidenceKindExecutor
 	}
+	if strings.Contains(command, " scenario ") && scenarioCommandProducesEvidence(command) {
+		return evidenceKindHTTPScenario
+	}
 	return commandProducesExit
 }
 
 func commandSchemaRef(command string) string {
-	if strings.Contains(command, " verify ") || strings.Contains(command, " execute ") {
+	if strings.Contains(command, " verify ") || strings.Contains(command, " execute ") || strings.Contains(command, " scenario ") && scenarioCommandProducesEvidence(command) {
 		return schemaRefEvidence
 	}
 	return schemaRefPlanExecutable
+}
+
+func scenarioCommandProducesEvidence(command string) bool {
+	return strings.Contains(command, " --run-http") || strings.Contains(command, " --cases")
 }
