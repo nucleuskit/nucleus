@@ -32,6 +32,7 @@ const (
 	verificationFieldPipeline       = "pipeline"
 	verificationFieldResultKind     = "result_kind"
 	verificationFieldEvidenceSchema = "evidence_schema"
+	verificationFieldOptional       = "optional_evidence"
 )
 
 const (
@@ -53,6 +54,8 @@ const (
 	commandLintStrict        = "nucleus lint --dir . --strict"
 	commandVerifyJSON        = "nucleus verify --dir . --json"
 	commandDescribeJSON      = "nucleus describe --dir . --json"
+	commandScenarioPlanJSON  = "nucleus scenario --dir . --json"
+	commandScenarioRunJSON   = "nucleus scenario --dir . --run-http --base-url <base-url> --json"
 	commandGoModTidy         = "go mod tidy"
 	commandGoListAll         = "go list ./..."
 	commandGoTestCompileOnly = "go test ./... -run ^$"
@@ -67,4 +70,8 @@ const (
 	phaseImport             = "import"
 	phaseBuild              = "build"
 	phaseTest               = "test"
+)
+
+const (
+	evidenceKindHTTPScenario = "nucleus.http_scenario_evidence"
 )

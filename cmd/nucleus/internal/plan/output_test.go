@@ -70,6 +70,36 @@ func TestBuildOutputExecutableMarksBlockedEditsRequired(t *testing.T) {
 	}
 }
 
+func TestExecutablePlanAcceptsHTTPScenarioEvidence(t *testing.T) {
+	dir := newPlanFixture(t, []string{"api/**", "internal/domain/**", "internal/adapter/http/**"})
+
+	output, err := BuildOutput(OutputOptions{
+		Dir:        dir,
+		Task:       "新增 HTTP 接口",
+		Executable: true,
+	})
+	if err != nil {
+		t.Fatalf("BuildOutput() error = %v", err)
+	}
+	policy, ok := output["evidence_policy"].(map[string]any)
+	if !ok {
+		t.Fatalf("evidence_policy has type %T, want map[string]any", output["evidence_policy"])
+	}
+	kinds := anyStringSlice(policy["accepted_kinds"])
+	if !containsString(kinds, evidenceKindHTTPScenario) {
+		t.Fatalf("accepted_kinds = %#v, want %s", kinds, evidenceKindHTTPScenario)
+	}
+	if got := commandProduces("nucleus scenario --dir . --json"); got != commandProducesExit {
+		t.Fatalf("plain scenario produces = %q, want %q", got, commandProducesExit)
+	}
+	if got := commandProduces("nucleus scenario --dir . --run-http --base-url http://127.0.0.1 --json"); got != evidenceKindHTTPScenario {
+		t.Fatalf("run-http scenario produces = %q, want %q", got, evidenceKindHTTPScenario)
+	}
+	if got := commandSchemaRef("nucleus scenario --dir . --cases cases.json --base-url http://127.0.0.1 --json"); got != schemaRefEvidence {
+		t.Fatalf("cases scenario schema_ref = %q, want %q", got, schemaRefEvidence)
+	}
+}
+
 func TestCommandJSONBlockedReturnsSentinel(t *testing.T) {
 	dir := newPlanFixture(t, []string{"docs/**"})
 	cmd := NewCommand(Config{Dir: &dir})
