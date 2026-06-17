@@ -8,6 +8,7 @@ import (
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/lint"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/plan"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/repair"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/report"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/scenario"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/validate"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/verify"
@@ -53,6 +54,7 @@ func New() *cobra.Command {
 	cmd.AddCommand(plan.NewCommand(plan.Config{
 		Dir: &opts.dir,
 	}))
+
 	cmd.AddCommand(apply.NewCommand(apply.Config{
 		Dir: &opts.dir,
 	}))
@@ -60,6 +62,9 @@ func New() *cobra.Command {
 		Dir: &opts.dir,
 	}))
 	cmd.AddCommand(repair.NewCommand(repair.Config{
+		Dir: &opts.dir,
+	}))
+	cmd.AddCommand(report.NewCommand(report.Config{
 		Dir: &opts.dir,
 	}))
 	cmd.AddCommand(scenario.NewCommand(scenario.Config{

@@ -65,6 +65,7 @@ nucleus gen
 nucleus scenario --json
 nucleus lint
 nucleus verify
+nucleus report --json
 ```
 
 The goal is not just to generate code. The goal is to produce evidence that the change respected contracts, manifests, generated freshness, dependency boundaries, and verification commands.
@@ -87,6 +88,16 @@ reviewable test suggestions. Use `nucleus scenario --json` for a scenario plan,
 explicit opt-in HTTP scenario evidence. Network execution is never implicit:
 `--run-http` and `--cases` require `--base-url`, and captured headers are
 redacted for sensitive keys such as authorization and cookies.
+
+`report` summarizes AI change quality and platform readiness without making
+network calls. By default it reads AI task result JSON files from
+`artifacts/nucleus/ai-tasks`; pass `--ai-tasks` for an explicit directory, or
+`--platform` to emit local release-readiness metadata from `contract/inspect`.
+Like other subcommands, the default output is human-readable and `--json` emits
+a stable envelope with `result_kind: "nucleus.report_result"`,
+`schema_version: "report.v1"`, `schema_ref:
+"contract/schema/report.schema.json"`, `ok`, `mode`, `summary`, and
+`diagnostics`.
 
 For the bundled example, run `nucleus validate --dir example/hello-http`.
 Successful human output includes a short validation summary; `--json` emits the
