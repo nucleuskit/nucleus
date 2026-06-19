@@ -5,6 +5,7 @@ import (
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/describe"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/execute"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/gen"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/initcmd"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/lint"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/plan"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/repair"
@@ -68,6 +69,9 @@ func New() *cobra.Command {
 		Dir: &opts.dir,
 	}))
 	cmd.AddCommand(scenario.NewCommand(scenario.Config{
+		Dir: &opts.dir,
+	}))
+	cmd.AddCommand(initcmd.NewCommand(initcmd.Config{
 		Dir: &opts.dir,
 	}))
 	return cmd
