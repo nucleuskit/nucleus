@@ -1,4 +1,0 @@
-http:
-  address: "${HTTP_ADDR:-127.0.0.1:8080}"
-greeting:
-  prefix: "hello"

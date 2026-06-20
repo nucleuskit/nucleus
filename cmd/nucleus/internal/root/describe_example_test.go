@@ -10,8 +10,7 @@ import (
 )
 
 func TestDescribeCommandWithHelloHTTPExample(t *testing.T) {
-	repoRoot := repositoryRoot(t)
-	exampleDir := filepath.Join(repoRoot, "example", "hello-http")
+	exampleDir := writeRootExampleService(t)
 
 	cmd := New()
 	var stdout bytes.Buffer

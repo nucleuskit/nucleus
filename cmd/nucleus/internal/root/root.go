@@ -13,6 +13,7 @@ import (
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/repair"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/report"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/scenario"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/serve"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/validate"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/verify"
 	"github.com/spf13/cobra"
@@ -37,7 +38,6 @@ func New() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&opts.dir, "dir", ".", "service root directory")
 	cmd.PersistentFlags().BoolVar(&opts.verbose, "verbose", false, "enable verbose output")
 	cmd.PersistentFlags().StringVar(&opts.schema, "schema", "", "override describe schema version")
-
 	cmd.AddCommand(describe.NewCommand(describe.Config{
 		Dir:            &opts.dir,
 		SchemaOverride: &opts.schema,
@@ -79,6 +79,9 @@ func New() *cobra.Command {
 		Dir: &opts.dir,
 	}))
 	cmd.AddCommand(migrate.NewCommand(migrate.Config{
+		Dir: &opts.dir,
+	}))
+	cmd.AddCommand(serve.NewCommand(serve.Config{
 		Dir: &opts.dir,
 	}))
 	return cmd

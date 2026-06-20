@@ -63,6 +63,7 @@ nucleus validate
 nucleus plan --task "change request" --json
 nucleus gen
 nucleus scenario --json
+nucleus serve --check --json
 nucleus lint
 nucleus verify
 nucleus report --json
@@ -89,6 +90,16 @@ explicit opt-in HTTP scenario evidence. Network execution is never implicit:
 `--run-http` and `--cases` require `--base-url`, and captured headers are
 redacted for sensitive keys such as authorization and cookies.
 
+`serve` exposes local metadata endpoints for manual probes and automation
+preflight checks. Use `nucleus serve --check --json` to inspect the service
+without opening a listener, or `nucleus serve --addr 127.0.0.1:8080` to expose
+`/healthz`, `/readyz`, and `/.well-known/nucleus.json`. The command is
+metadata-only: it does not auto-wire provider SDKs or generated business
+handlers. JSON output uses `result_kind: "nucleus.serve_result"`,
+`schema_version: "serve.v1"`, `schema_ref:
+"contract/schema/serve.schema.json"`, `ok`, `mode`, `summary`, `diagnostics`,
+and `server`.
+
 `report` summarizes AI change quality and platform readiness without making
 network calls. By default it reads AI task result JSON files from
 `artifacts/nucleus/ai-tasks`; pass `--ai-tasks` for an explicit directory, or
@@ -99,9 +110,10 @@ a stable envelope with `result_kind: "nucleus.report_result"`,
 "contract/schema/report.schema.json"`, `ok`, `mode`, `summary`, and
 `diagnostics`.
 
-For the bundled example, run `nucleus validate --dir example/hello-http`.
-Successful human output includes a short validation summary; `--json` emits the
-same result with stable `ok`, `summary`, and `diagnostics` fields.
+For any service directory containing `nucleus.yaml` and contract sources, run
+`nucleus validate --dir <service>`. Successful human output includes a short
+validation summary; `--json` emits the same result with stable `ok`, `summary`,
+and `diagnostics` fields.
 
 ## Project Shape
 
@@ -110,7 +122,7 @@ The main repository hosts the CLI, examples, and public documentation:
 ```text
 api/                 Contract files
 cmd/nucleus/         CLI implementation
-example/             Runnable examples
+examples/            Runnable examples and templates
 docs/                Concepts, ADRs, plans, and platform mapping
 ```
 

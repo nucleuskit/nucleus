@@ -3,13 +3,11 @@ package root
 import (
 	"bytes"
 	"encoding/json"
-	"path/filepath"
 	"testing"
 )
 
 func TestScenarioCommandWithHelloHTTPExample(t *testing.T) {
-	repoRoot := repositoryRoot(t)
-	exampleDir := filepath.Join(repoRoot, "example", "hello-http")
+	exampleDir := writeRootExampleService(t)
 
 	cmd := New()
 	var stdout bytes.Buffer
