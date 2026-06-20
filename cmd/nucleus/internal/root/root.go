@@ -8,6 +8,7 @@ import (
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/gen"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/initcmd"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/lint"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/migrate"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/plan"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/repair"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/report"
@@ -75,6 +76,9 @@ func New() *cobra.Command {
 		Dir: &opts.dir,
 	}))
 	cmd.AddCommand(capability.NewCommand(capability.Config{
+		Dir: &opts.dir,
+	}))
+	cmd.AddCommand(migrate.NewCommand(migrate.Config{
 		Dir: &opts.dir,
 	}))
 	return cmd
