@@ -1,7 +1,0 @@
-errors:
-  - code: 4001
-    message: invalid_name
-    http_status: 400
-  - code: 4041
-    message: greeting_not_found
-    http_status: 404

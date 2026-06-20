@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nucleus"
+  short_description: "Safe Nucleus service workflow"
+  default_prompt: "Use $nucleus to safely change a Nucleus Go service."
