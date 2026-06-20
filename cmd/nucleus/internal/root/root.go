@@ -2,6 +2,7 @@ package root
 
 import (
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/apply"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/capability"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/describe"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/execute"
 	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/gen"
@@ -55,7 +56,6 @@ func New() *cobra.Command {
 	cmd.AddCommand(plan.NewCommand(plan.Config{
 		Dir: &opts.dir,
 	}))
-
 	cmd.AddCommand(apply.NewCommand(apply.Config{
 		Dir: &opts.dir,
 	}))
@@ -72,6 +72,9 @@ func New() *cobra.Command {
 		Dir: &opts.dir,
 	}))
 	cmd.AddCommand(initcmd.NewCommand(initcmd.Config{
+		Dir: &opts.dir,
+	}))
+	cmd.AddCommand(capability.NewCommand(capability.Config{
 		Dir: &opts.dir,
 	}))
 	return cmd
