@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/nucleuskit/contract/inspect"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/capcatalog"
 )
 
 func generatedOutputs(taskType string) []string {
@@ -90,7 +91,7 @@ func capabilityContext(task string, description inspect.Description, capabilitie
 }
 
 func requestedCapabilities(task string) []string {
-	candidates := []string{"log", "trace", "config", "httpclient", "transport", "discovery", "metric", "auth", "health", "sql", "redis", "mongo", "mq", "store", "kv", "lock", "sentinel", "errortracker", "profiler"}
+	candidates := capcatalog.PlanningNames()
 	var capabilities []string
 	lowerTask := strings.ToLower(task)
 	mongoRequested := containsAny(lowerTask, "mongodb", "mongo", "文档库")
@@ -150,7 +151,7 @@ func providerHint(task string, capability string) string {
 		case containsAny(lowerTask, "gorm"):
 			return "gorm"
 		default:
-			return "sql"
+			return capcatalog.DefaultProvider(capability)
 		}
 	case "mongo":
 		return "mongo"
@@ -228,7 +229,7 @@ func providerHint(task string, capability string) string {
 	case "profiler":
 		return "pyroscope"
 	default:
-		return ""
+		return capcatalog.DefaultProvider(capability)
 	}
 }
 
