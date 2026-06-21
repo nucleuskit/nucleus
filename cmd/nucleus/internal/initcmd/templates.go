@@ -20,9 +20,14 @@ func templateFiles(templateType string, name string, module string) (map[string]
 }
 
 func serviceTemplateFiles(name string, module string) map[string]string {
+	runtimeRequirements := []moduleRequirement{
+		{Path: nucleusHTTPModule, Version: nucleusHTTPVersion},
+		{Path: nucleusCapModule, Version: nucleusCapVersion, Indirect: true},
+		{Path: nucleusCoreModule, Version: nucleusCoreVersion, Indirect: true},
+	}
 	return map[string]string{
-		"go.mod":                      goModTemplate(module, []moduleRequirement{{Path: nucleusHTTPModule, Version: nucleusHTTPVersion}}),
-		"go.sum":                      goSumTemplate([]string{nucleusHTTPModule}),
+		"go.mod":                      goModTemplate(module, runtimeRequirements),
+		"go.sum":                      goSumTemplate([]string{nucleusHTTPModule, nucleusCapModule, nucleusCoreModule}),
 		"nucleus.yaml":                serviceManifestTemplate(name),
 		"api/openapi.yaml":            openAPITemplate(name),
 		"api/errors.yaml":             serviceErrorsTemplate(),
@@ -75,8 +80,9 @@ func libraryTemplateFiles(name string, module string) map[string]string {
 }
 
 type moduleRequirement struct {
-	Path    string
-	Version string
+	Path     string
+	Version  string
+	Indirect bool
 }
 
 func goModTemplate(module string, requires []moduleRequirement) string {
@@ -88,21 +94,35 @@ func goModTemplate(module string, requires []moduleRequirement) string {
 	}
 	if len(requires) == 1 {
 		item := requires[0]
-		builder.WriteString("\nrequire " + item.Path + " " + item.Version + "\n")
+		builder.WriteString("\nrequire " + formatModuleRequirement(item) + "\n")
 		return builder.String()
 	}
 	builder.WriteString("\nrequire (\n")
 	for _, item := range requires {
-		builder.WriteString("\t" + item.Path + " " + item.Version + "\n")
+		builder.WriteString("\t" + formatModuleRequirement(item) + "\n")
 	}
 	builder.WriteString(")\n")
 	return builder.String()
 }
 
+func formatModuleRequirement(item moduleRequirement) string {
+	line := item.Path + " " + item.Version
+	if item.Indirect {
+		line += " // indirect"
+	}
+	return line
+}
+
 func goSumTemplate(modules []string) string {
 	entries := map[string]string{
-		nucleusHTTPModule: `github.com/nucleuskit/http v0.1.0-alpha.1.0.20260615170339-225ca98f40d7 h1:wWoSiKv5HihOSOstvkov883PfSKLveAuW3tTZb9dH/Q=
-github.com/nucleuskit/http v0.1.0-alpha.1.0.20260615170339-225ca98f40d7/go.mod h1:M4WW38dQuFNIm2kf1O5JIrat+KKZ3ONarUyrtbMDmJo=
+		nucleusHTTPModule: `github.com/nucleuskit/http v0.1.0-alpha.2 h1:YedMdKWg/YkouBOHu3hQvi4Vd8S6YNbdJFPUrzja+Og=
+github.com/nucleuskit/http v0.1.0-alpha.2/go.mod h1:SxCsV2Ag3rtX82BbyIGN7ByiioUePbesFbIKIQQbeRs=
+`,
+		nucleusCapModule: `github.com/nucleuskit/cap v0.1.0-alpha.2 h1:UnBp5ezoi+UrgT92DwpTdQynrEnUNnsf3rQKB0pNfPw=
+github.com/nucleuskit/cap v0.1.0-alpha.2/go.mod h1:DLSQmS/6irYQfpWGJjce9+STvqG33yZMCxkwvdLf7XM=
+`,
+		nucleusCoreModule: `github.com/nucleuskit/core v0.1.0-alpha.2 h1:CT4RJvCYtVNo0+Gqyf5zx4T90dBiXq4JVhQxEKBXyJ8=
+github.com/nucleuskit/core v0.1.0-alpha.2/go.mod h1:fwIlIS28wLh/VQ/jhR4TgrZcrN1nOgrAxSYYYWRdEYk=
 `,
 	}
 	var builder strings.Builder
@@ -292,7 +312,7 @@ func New(cfg config.Config) *App {
 	return &App{
 		config: cfg,
 		router: router,
-		server: serverpkg.NewHTTPServer(cfg.Server.Addr, router),
+		server: serverpkg.NewHTTPServer(cfg.Server.Addr, router.Handler()),
 	}
 }
 
