@@ -20,7 +20,12 @@ ai:
 capabilities:
   - http
 `)
-	writeFile(t, dir, "go.mod", "module example.com/demo\n\ngo 1.26.3\n\nrequire github.com/nucleuskit/http v0.0.0\n\nreplace github.com/nucleuskit/http => "+runtimeHTTPReplace(t)+"\n")
+	writeFile(t, dir, "go.mod", "module example.com/demo\n\ngo 1.26.3\n\nrequire github.com/nucleuskit/http v0.0.0\n\nrequire (\n\tgithub.com/nucleuskit/cap v0.1.0-alpha.2 // indirect\n\tgithub.com/nucleuskit/core v0.1.0-alpha.2 // indirect\n)\n\n"+localRuntimeReplace(t))
+	writeFile(t, dir, "go.sum", `github.com/nucleuskit/cap v0.1.0-alpha.2 h1:UnBp5ezoi+UrgT92DwpTdQynrEnUNnsf3rQKB0pNfPw=
+github.com/nucleuskit/cap v0.1.0-alpha.2/go.mod h1:DLSQmS/6irYQfpWGJjce9+STvqG33yZMCxkwvdLf7XM=
+github.com/nucleuskit/core v0.1.0-alpha.2 h1:CT4RJvCYtVNo0+Gqyf5zx4T90dBiXq4JVhQxEKBXyJ8=
+github.com/nucleuskit/core v0.1.0-alpha.2/go.mod h1:fwIlIS28wLh/VQ/jhR4TgrZcrN1nOgrAxSYYYWRdEYk=
+`)
 	writeFile(t, dir, "demo.go", "package demo\n")
 	writeFile(t, dir, "internal/app/routes.go", `package app
 
@@ -373,4 +378,9 @@ func runtimeHTTPReplace(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return filepath.ToSlash(path)
+}
+
+func localRuntimeReplace(t *testing.T) string {
+	t.Helper()
+	return "replace github.com/nucleuskit/http => " + runtimeHTTPReplace(t) + "\n"
 }

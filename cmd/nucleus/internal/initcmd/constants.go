@@ -32,7 +32,11 @@ const (
 	resultKindInit = "nucleus.init_result"
 
 	nucleusHTTPModule      = "github.com/nucleuskit/http"
-	nucleusHTTPVersion     = "v0.1.0-alpha.1.0.20260615170339-225ca98f40d7"
+	nucleusHTTPVersion     = "v0.1.0-alpha.2"
+	nucleusCapModule       = "github.com/nucleuskit/cap"
+	nucleusCapVersion      = "v0.1.0-alpha.2"
+	nucleusCoreModule      = "github.com/nucleuskit/core"
+	nucleusCoreVersion     = "v0.1.0-alpha.2"
 	contractGenTarget      = "contract/gen"
 	httpAdapterGenTarget   = "internal/adapter/http/gen"
 	generatedFreshnessFile = ".nucleus-source.sha256"

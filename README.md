@@ -9,6 +9,9 @@ It is designed for AI agents, CI systems, and human reviewers to work from the s
 
 > Status: pre-alpha. The public repository is being prepared for the first source import under `github.com/nucleuskit/nucleus`.
 
+For a code-level view of what is implemented, what is scaffold-only, and the
+current module release status, see [Implementation Status](docs/implementation-status.md).
+
 ## Why Nucleus
 
 Traditional Go microservice frameworks are optimized for humans writing code inside an IDE. Nucleus is optimized for AI agents changing services safely and repeatably.
