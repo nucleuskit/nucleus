@@ -1,24 +1,24 @@
 [submodule "cap"]
 	path = cap
-	url = https://github.com/nucleuskit/cap.git
+	url = https://anniext.cn/nucleuskit/cap.git
 	branch = main
 [submodule "contract"]
 	path = contract
-	url = https://github.com/nucleuskit/contract.git
+	url = https://anniext.cn/nucleuskit/contract.git
 	branch = main
 [submodule "core"]
 	path = core
-	url = https://github.com/nucleuskit/core.git
+	url = https://anniext.cn/nucleuskit/core.git
 	branch = main
 [submodule "runtime/grpc"]
 	path = runtime/grpc
-	url = https://github.com/nucleuskit/grpc.git
+	url = https://anniext.cn/nucleuskit/grpc.git
 	branch = main
 [submodule "runtime/http"]
 	path = runtime/http
-	url = https://github.com/nucleuskit/http.git
+	url = https://anniext.cn/nucleuskit/http.git
 	branch = main
 [submodule "runtime/worker"]
 	path = runtime/worker
-	url = https://github.com/nucleuskit/worker.git
+	url = https://anniext.cn/nucleuskit/worker.git
 	branch = main
