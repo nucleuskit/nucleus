@@ -1,7 +1,5 @@
 package describe
 
-const defaultSchemaVersion = "1.1"
-
 const (
 	commandUseDescribe  = "describe"
 	commandShortSummary = "describe service metadata as JSON"
@@ -23,21 +21,33 @@ const (
 )
 
 const (
+	resultKindDescribe    = "nucleus.describe_result"
+	schemaVersionDescribe = "describe-result.v1"
+	schemaRefDescribe     = "contract/schema/describe-result.v1.schema.json"
+)
+
+const (
 	outputFieldSchemaVersion = "schema_version"
+	outputFieldResultKind    = "result_kind"
+	outputFieldSchemaRef     = "schema_ref"
+	outputFieldOK            = "ok"
 	outputFieldVerification  = "verification"
+	outputFieldDiagnostics   = "diagnostics"
 )
 
 const (
 	verificationFieldCommands       = "commands"
 	verificationFieldPipeline       = "pipeline"
+	verificationFieldProjectSource  = "project_commands_source"
 	verificationFieldResultKind     = "result_kind"
 	verificationFieldEvidenceSchema = "evidence_schema"
 	verificationFieldOptional       = "optional_evidence"
 )
 
 const (
-	verificationResultKind     = "nucleus.verify_result"
-	verificationEvidenceSchema = "contract/schema/evidence.schema.json"
+	verificationResultKind           = "nucleus.verify_result"
+	verificationEvidenceSchema       = "contract/schema/evidence.v1.schema.json"
+	verificationProjectCommandSource = "nucleus.yaml verify.commands"
 )
 
 const (
@@ -50,26 +60,21 @@ const (
 )
 
 const (
-	commandValidate          = "nucleus validate --dir ."
-	commandLintStrict        = "nucleus lint --dir . --strict"
-	commandVerifyJSON        = "nucleus verify --dir . --json"
-	commandDescribeJSON      = "nucleus describe --dir . --json"
-	commandScenarioPlanJSON  = "nucleus scenario --dir . --json"
-	commandScenarioRunJSON   = "nucleus scenario --dir . --run-http --base-url <base-url> --json"
-	commandGoModTidy         = "go mod tidy"
-	commandGoListAll         = "go list ./..."
-	commandGoTestCompileOnly = "go test ./... -run ^$"
-	commandGoTestAll         = "go test ./..."
+	commandValidate         = "nucleus validate --dir ."
+	commandLintStrict       = "nucleus lint --dir . --strict"
+	commandDecisionValidate = "nucleus decision validate --dir ."
+	commandVerifyJSON       = "nucleus verify --dir . --json"
+	commandDescribeJSON     = "nucleus describe --dir . --json"
+	commandScenarioPlanJSON = "nucleus scenario --dir . --json"
+	commandScenarioRunJSON  = "nucleus scenario --dir . --run-http --base-url <base-url> --json"
 )
 
 const (
 	phaseValidate           = "validate"
 	phaseLint               = "lint"
+	phaseDecision           = "decision"
 	phaseGeneratedFreshness = "generated_freshness"
-	phaseTidy               = "tidy"
-	phaseImport             = "import"
-	phaseBuild              = "build"
-	phaseTest               = "test"
+	phaseScenario           = "scenario"
 )
 
 const (

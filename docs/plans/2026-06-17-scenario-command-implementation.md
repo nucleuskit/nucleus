@@ -59,7 +59,7 @@
 ### Task 4: Integrate Evidence and Documentation
 
 **Files:**
-- Modify: `contract/schema/evidence.schema.json`
+- Modify: `contract/schema/evidence.v1.schema.json`
 - Modify: `cmd/nucleus/internal/plan/constants.go`
 - Modify: `cmd/nucleus/internal/plan/executable.go`
 - Modify: `cmd/nucleus/internal/describe/constants.go`

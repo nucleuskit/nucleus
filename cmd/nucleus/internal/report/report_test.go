@@ -1,9 +1,13 @@
 package report
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	decisioncmd "github.com/nucleuskit/nucleus/cmd/nucleus/internal/decision"
 )
 
 func TestAIQualityReportCountsScenarioAndRealEvidenceSources(t *testing.T) {
@@ -26,7 +30,8 @@ func TestAIQualityReportCountsScenarioAndRealEvidenceSources(t *testing.T) {
   "kind": "nucleus.evidence_replay",
   "labels": ["single_service", "repairable"],
   "evidence": {
-    "kind": "nucleus.repair_evidence",
+    "result_kind": "nucleus.repair_evidence",
+    "ok": true,
     "status": "repaired",
     "verification_pass": true,
     "rounds": [
@@ -62,7 +67,8 @@ func TestAIQualityReportDoesNotInferReplaySuccessWithoutEvidence(t *testing.T) {
   "kind": "nucleus.evidence_replay",
   "labels": ["single_service"],
   "evidence": {
-    "kind": "nucleus.repair_evidence",
+    "result_kind": "nucleus.repair_evidence",
+    "ok": false,
     "status": "needs_manual_action"
   }
 }`)
@@ -89,7 +95,7 @@ func TestAIQualityReportOnlyReplaysExplicitEvidenceWrappers(t *testing.T) {
   "apply_pass": true,
   "verify_pass": true,
   "evidence": {
-    "kind": "nucleus.verify_result",
+    "result_kind": "nucleus.verify_result",
     "ok": false
   }
 }`)
@@ -116,7 +122,9 @@ func TestAIQualityReportTreatsVerifyStepPassFalseAsLocatedFailure(t *testing.T) 
       {
         "id": "generated_freshness",
         "phase": "generated_freshness",
-        "pass": false
+        "kind": "generated_freshness",
+        "status": "failed",
+        "ok": false
       }
     ]
   }
@@ -149,7 +157,8 @@ func TestAIQualityReportSummarizesTaskTypeLabelsAndStrategies(t *testing.T) {
   "task_type": "generated_freshness",
   "labels": ["single_service", "repairable"],
   "evidence": {
-    "kind": "nucleus.repair_evidence",
+    "result_kind": "nucleus.repair_evidence",
+    "ok": false,
     "status": "needs_manual_action",
     "verification_pass": false,
     "failure_type": "generated_freshness",
@@ -192,7 +201,8 @@ func TestAIQualityReportSummarizesCapabilityEvents(t *testing.T) {
   "kind": "nucleus.evidence_replay",
   "labels": ["single_service"],
   "evidence": {
-    "kind": "nucleus.verify_result",
+    "result_kind": "nucleus.verify_result",
+    "ok": false,
     "status": "failed",
     "verification_pass": false,
     "capability_events": [
@@ -228,96 +238,76 @@ func TestAIQualityReportSummarizesCapabilityEvents(t *testing.T) {
 	}
 }
 
-func TestPlatformReadinessReportSummarizesServiceMetadata(t *testing.T) {
-	dir := t.TempDir()
-	writeFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
-service:
-  name: demo
-  version: "0.1.0"
-capabilities:
-  - http
-ai:
-  generated:
-    - contract/gen
+func TestAIQualityReportSummarizesDecisionQualityAndRecipeCandidates(t *testing.T) {
+	serviceDir := t.TempDir()
+	tasksDir := filepath.Join(serviceDir, "artifacts", "nucleus", "ai-tasks")
+	writeReportServiceScaffold(t, serviceDir)
+	writeFile(t, serviceDir, ".nucleus/decisions/order-store.yaml", `schema_version: "decision.v1"
+id: order-store-provider
+capability: order_store
+decision:
+  provider: gorm
+  library: gorm.io/gorm
+  status: proposed
+  locked: false
+reason:
+  - project needs an explicit provider decision
+impact:
+  files:
+    - internal/order/store.go
+verification:
+  commands:
+    - go test ./internal/order
 `)
-	writeFile(t, dir, "api/openapi.yaml", `openapi: 3.0.3
-paths:
-  /healthz:
-    get:
-      operationId: getHealthz
-`)
-	writeFile(t, dir, "api/errors.yaml", `errors:
-  - code: 0
-    message: ok
-    http_status: 200
-`)
+	acceptReportDecision(t, serviceDir, ".nucleus/decisions/order-store.yaml")
+	writeFile(t, tasksDir, "plan-evidence.json", `{
+  "id": "plan-evidence",
+  "source": "scenario",
+  "plan_pass": true,
+  "apply_pass": true,
+  "verify_pass": true,
+  "evidence": {
+    "result_kind": "nucleus.plan_result",
+    "context": {
+      "recipe_candidates": [
+        {
+          "id": "mysql-gorm",
+          "decision_required": true
+        },
+        {
+          "id": "mysql-sqlx",
+          "decision_required": true
+        }
+      ]
+    }
+  }
+}`)
 
-	report := mustPlatformReadinessReport(t, dir)
-	if report.Service != "demo" || report.Version != "0.1.0" {
-		t.Fatalf("unexpected service metadata: %#v", report)
+	result := buildAIQualityResult(serviceDir, tasksDir, true)
+	if !result.OK {
+		t.Fatalf("buildAIQualityResult returned diagnostics: %#v", result.Diagnostics)
 	}
-	if report.EndpointCount != 1 || report.CapabilityCount != 1 {
-		t.Fatalf("unexpected counts: %#v", report)
+	report := result.AIQuality
+	if report == nil {
+		t.Fatal("AIQuality is nil")
 	}
-	if report.GeneratedFresh != false {
-		t.Fatalf("missing generated marker should make generated_fresh false: %#v", report)
+	if report.DecisionQuality.Files != 1 || report.DecisionQuality.Valid != 1 || report.DecisionQuality.AcceptedLocked != 1 {
+		t.Fatalf("decision_quality = %#v, want one accepted locked decision", report.DecisionQuality)
 	}
-}
-
-func TestPlatformReadinessReportIncludesLocalArtifactsAndProviderStrategy(t *testing.T) {
-	dir := t.TempDir()
-	writeFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
-service:
-  name: demo
-  version: "0.1.0"
-capabilities:
-  - log
-ai:
-  generated:
-    - contract/gen
-`)
-	writeFile(t, dir, "api/openapi.yaml", "openapi: 3.0.3\npaths: {}\n")
-	writeFile(t, dir, "api/errors.yaml", "errors: []\n")
-	writeFile(t, dir, "cmd/demo/main.go", `package main
-
-import (
-	_ "github.com/nucleuskit/bridge/zap"
-	_ "github.com/nucleuskit/cap/log"
-)
-
-func main() {}
-`)
-
-	report := mustPlatformReadinessReport(t, dir)
-	if report.PlatformUploadPayload.NetworkRequired || report.PlatformUploadPayload.Artifact != "local:artifacts/nucleus/platform-upload-payload.json" {
-		t.Fatalf("platform payload should be local-only artifact metadata: %#v", report.PlatformUploadPayload)
+	if report.RecipeCandidateUsage.CandidateCount != 2 || report.RecipeCandidateUsage.DecisionRequiredCount != 2 {
+		t.Fatalf("recipe_candidate_usage = %#v, want two decision-required candidates", report.RecipeCandidateUsage)
 	}
-	if report.ReleaseDryRun.Artifact != "local:artifacts/nucleus/release-dry-run.json" {
-		t.Fatalf("unexpected release dry-run artifact: %#v", report.ReleaseDryRun)
+	if got := strings.Join(report.RecipeCandidateUsage.UniqueCandidateIDs, ","); got != "mysql-gorm,mysql-sqlx" {
+		t.Fatalf("unique_candidate_ids = %q", got)
 	}
-	if len(report.ReadinessGates) == 0 {
-		t.Fatalf("expected readiness gates: %#v", report)
-	}
-	if len(report.RiskGates) == 0 {
-		t.Fatalf("expected risk gates: %#v", report)
-	}
-	if len(report.ProviderStrategy) != 1 {
-		t.Fatalf("expected one provider strategy: %#v", report)
-	}
-	if report.ProviderStrategy[0].Capability != "log" || report.ProviderStrategy[0].Provider != "zap" {
-		t.Fatalf("unexpected provider strategy identity: %#v", report.ProviderStrategy[0])
-	}
-	if report.ProviderStrategy[0].SDKStatus != "optional_external_provider_detected" {
-		t.Fatalf("provider SDK should be recommendation state, not required default: %#v", report.ProviderStrategy[0])
-	}
-	if len(report.ProviderStrategy[0].Gaps) != 3 {
-		t.Fatalf("expected health, fallback, and observability gaps: %#v", report.ProviderStrategy[0])
+	if result.Summary.DecisionFileCount != 1 || result.Summary.LockedDecisionCount != 1 || result.Summary.RecipeCandidateCount != 2 {
+		t.Fatalf("summary = %#v, want decision and recipe candidate counts", result.Summary)
 	}
 }
 
 func mustAIQualityReport(t *testing.T, dir string) aiQualityReport {
 	t.Helper()
-	result := buildAIQualityResult(dir, true)
+	result := buildAIQualityResult(dir, dir, true)
 	if !result.OK {
 		t.Fatalf("buildAIQualityResult returned diagnostics: %#v", result.Diagnostics)
 	}
@@ -325,18 +315,6 @@ func mustAIQualityReport(t *testing.T, dir string) aiQualityReport {
 		t.Fatal("AIQuality is nil")
 	}
 	return *result.AIQuality
-}
-
-func mustPlatformReadinessReport(t *testing.T, dir string) platformReadinessReport {
-	t.Helper()
-	result := buildPlatformReadinessResult(dir)
-	if !result.OK {
-		t.Fatalf("buildPlatformReadinessResult returned diagnostics: %#v", result.Diagnostics)
-	}
-	if result.PlatformReadiness == nil {
-		t.Fatal("PlatformReadiness is nil")
-	}
-	return *result.PlatformReadiness
 }
 
 func writeFile(t *testing.T, dir string, name string, data string) {
@@ -347,5 +325,38 @@ func writeFile(t *testing.T, dir string, name string, data string) {
 	}
 	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func writeReportServiceScaffold(t *testing.T, dir string) {
+	t.Helper()
+	writeFile(t, dir, "go.mod", "module example.com/demo\n\ngo 1.26.3\n")
+	writeFile(t, dir, "demo.go", "package demo\n")
+	writeFile(t, dir, "internal/order/store.go", "package order\n\ntype Store interface{}\n")
+	writeFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
+service:
+  name: demo
+  version: "0.1.0"
+capabilities:
+  - id: order_store
+    kind: sql
+ai:
+  intent: test
+  allowed_changes:
+    - internal/**
+    - .nucleus/**
+`)
+}
+
+func acceptReportDecision(t *testing.T, dir string, path string) {
+	t.Helper()
+	cmd := decisioncmd.NewCommand(decisioncmd.Config{Dir: &dir})
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"accept", path, "--by", "human", "--accepted-at", "2026-07-03T00:00:00Z", "--json"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("accept decision: %v\nstdout=%s\nstderr=%s", err, stdout.String(), stderr.String())
 	}
 }

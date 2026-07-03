@@ -2,12 +2,17 @@ package verify
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/nucleuskit/contract/diagnostic"
 	contractlint "github.com/nucleuskit/contract/lint"
+	"github.com/nucleuskit/contract/manifest"
 	"github.com/nucleuskit/contract/validation"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/decision"
 )
 
 func run(config Config) (verifyResult, error) {
@@ -24,6 +29,12 @@ func run(config Config) (verifyResult, error) {
 		result := buildResult(steps, diagnostics, nil)
 		return result, ErrVerifyFailed
 	}
+	m, err := manifest.Load(dir)
+	if err != nil {
+		diagnostics = append(diagnostics, diagnostic.Diagnostic{Severity: diagnostic.SeverityError, Code: "verify.manifest_read_failed", Path: "nucleus.yaml", Message: err.Error()})
+		result := buildResult(steps, diagnostics, nil)
+		return result, ErrVerifyFailed
+	}
 
 	findings := contractlint.Run(dir, true)
 	steps = append(steps, verifyStep{
@@ -32,6 +43,14 @@ func run(config Config) (verifyResult, error) {
 		OK:      len(findings) == 0,
 	})
 
+	decisionStep, decisionDiagnostics := runDecisionValidation(dir)
+	steps = append(steps, decisionStep)
+	diagnostics = append(diagnostics, decisionDiagnostics...)
+	if decisionDiagnostics.Failed() {
+		result := buildResult(steps, diagnostics, findings)
+		return result, ErrVerifyFailed
+	}
+
 	freshnessStep := runGeneratedFreshness(dir)
 	steps = append(steps, freshnessStep)
 	if len(findings) > 0 || !freshnessStep.OK {
@@ -39,22 +58,8 @@ func run(config Config) (verifyResult, error) {
 		return result, ErrVerifyFailed
 	}
 
-	tidyStep := runTidyCommand(dir)
-	steps = append(steps, tidyStep)
-	if !tidyStep.OK {
-		result := buildResult(steps, diagnostics, findings)
-		return result, ErrVerifyFailed
-	}
-
-	for _, command := range []struct {
-		phase string
-		args  []string
-	}{
-		{phaseImport, []string{"list", "./..."}},
-		{phaseBuild, []string{"test", "./...", "-run", "^$"}},
-		{phaseTest, []string{"test", "./..."}},
-	} {
-		step := runGoCommand(dir, command.phase, command.args)
+	for index, command := range m.Verify.Commands {
+		step := runProjectVerifyCommand(dir, command, index)
 		steps = append(steps, step)
 		if !step.OK {
 			result := buildResult(steps, diagnostics, findings)
@@ -72,18 +77,38 @@ func BuildResultForDir(dir string) verifyResult {
 	return result
 }
 
-func runGoCommand(dir string, phase string, args []string) verifyStep {
-	cmd := exec.Command("go", args...)
+func runProjectVerifyCommand(dir string, command string, index int) verifyStep {
+	args, parseErr := splitCommand(command)
+	step := verifyStep{
+		ID:      fmt.Sprintf("%s_%d", phaseVerifyCommand, index+1),
+		Phase:   phaseVerifyCommand,
+		Command: sanitizeCommandOutput(command, dir),
+		OK:      parseErr == nil && len(args) > 0,
+	}
+	if !step.OK {
+		step.Error = "invalid verify command"
+		if parseErr != nil {
+			step.Error = parseErr.Error()
+		}
+		step.ExitCode = 1
+		return step
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(projectVerifyTimeoutSeconds)*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Dir = dir
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
 	err := cmd.Run()
-	step := verifyStep{
-		Phase:   phase,
-		Command: "go " + strings.Join(args, " "),
-		OK:      err == nil,
-		Output:  sanitizeCommandOutput(output.String(), dir),
+	step.OK = err == nil
+	step.Output = sanitizeCommandOutput(output.String(), dir)
+	if ctx.Err() == context.DeadlineExceeded {
+		step.OK = false
+		step.Error = fmt.Sprintf("command timed out after %d seconds", projectVerifyTimeoutSeconds)
+		step.ExitCode = 124
+		return step
 	}
 	if err != nil {
 		step.Error = err.Error()
@@ -94,6 +119,68 @@ func runGoCommand(dir string, phase string, args []string) verifyStep {
 		}
 	}
 	return step
+}
+
+func splitCommand(command string) ([]string, error) {
+	var result []string
+	var current strings.Builder
+	var quote rune
+	escaped := false
+	for _, r := range command {
+		switch {
+		case escaped:
+			current.WriteRune(r)
+			escaped = false
+		case r == '\\':
+			escaped = true
+		case quote != 0:
+			if r == quote {
+				quote = 0
+			} else {
+				current.WriteRune(r)
+			}
+		case r == '\'' || r == '"':
+			quote = r
+		case r == ' ' || r == '\t' || r == '\n':
+			if current.Len() > 0 {
+				result = append(result, current.String())
+				current.Reset()
+			}
+		default:
+			current.WriteRune(r)
+		}
+	}
+	if escaped {
+		current.WriteRune('\\')
+	}
+	if quote != 0 {
+		return nil, fmt.Errorf("unterminated quote in command")
+	}
+	if current.Len() > 0 {
+		result = append(result, current.String())
+	}
+	return result, nil
+}
+
+func runDecisionValidation(dir string) (verifyStep, diagnostic.Diagnostics) {
+	quality := decision.QualityForDir(dir)
+	step := verifyStep{
+		Phase:           phaseDecision,
+		Command:         commandDecisionValidate,
+		OK:              !quality.Diagnostics.Failed(),
+		DecisionQuality: &quality,
+		Output: fmt.Sprintf(
+			"decisions: files=%d valid=%d accepted_locked=%d supersedes=%d drift=%d diagnostics=%d errors, %d warnings",
+			quality.Files,
+			quality.Valid,
+			quality.AcceptedLocked,
+			quality.Supersedes,
+			quality.Drift,
+			quality.Errors,
+			quality.Warnings,
+		),
+	}
+	return step, quality.Diagnostics
 }
 
 func buildResult(steps []verifyStep, diagnostics diagnostic.Diagnostics, findings []contractlint.Finding) verifyResult {
@@ -130,6 +217,9 @@ func completeStepMetadata(steps []verifyStep) []verifyStep {
 		step := &steps[index]
 		if step.ID == "" {
 			step.ID = step.Phase
+		}
+		if step.Kind == "" {
+			step.Kind = step.Phase
 		}
 		if step.Sequence == 0 {
 			step.Sequence = index + 1

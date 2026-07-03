@@ -32,6 +32,8 @@ const (
 
 const (
 	resultKindGen    = "nucleus.gen_result"
+	schemaVersionGen = "gen-result.v1"
+	schemaRefGen     = "contract/schema/gen-result.v1.schema.json"
 	jsonIndentPrefix = ""
 	jsonIndentValue  = "  "
 )

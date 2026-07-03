@@ -1,21 +1,21 @@
 ---
 name: nucleus
-description: Use when creating, inspecting, modifying, verifying, or repairing Go services built with Nucleus, the Contract/Manifest-first AI-native Go service kernel. Triggers include Nucleus business services, nucleus.yaml, api/openapi.yaml, api/errors.yaml, api/proto, capability declarations, edit surfaces, generated freshness, executable plans, and Nucleus CLI/MCP workflows.
+description: Use when adopting, inspecting, modifying, verifying, or repairing Go services that use Nucleus as an agent-native protocol layer. Triggers include nucleus.yaml, .nucleus/decisions, api/openapi.yaml, api/errors.yaml, api/proto, capability declarations, edit surfaces, generated freshness, executable plans, and Nucleus CLI/MCP workflows.
 ---
 
 # Nucleus
 
 ## Start Here
 
-Treat Nucleus as an installed service-kernel tool. Do not derive business code by copying a local Nucleus source checkout, examples, or testdata.
+Treat Nucleus as an installed protocol tool. Do not derive business code by copying a local Nucleus source checkout, examples, or testdata.
 
-For an empty directory, bootstrap through the CLI:
+For an existing Go project that has not adopted Nucleus yet, add only the local protocol index:
 
 ```bash
-nucleus init --name <service-name> --module <module-path> --template service --agent codex --dir .
+nucleus adopt --dir . --agent codex
 ```
 
-Use `--template worker` for worker services and `--template library` for library packages.
+If the repository is empty or has no Go module, ask the user how they want to initialize their own project first. Nucleus does not create service, worker, or library templates.
 
 For an existing service, inspect machine-readable facts before editing:
 
@@ -34,28 +34,21 @@ Read `edit_surfaces`, `generated_freshness`, `capability_graph`, `verification.c
    - HTTP starts in `api/openapi.yaml`.
    - gRPC starts in `api/proto/*.proto`.
    - Error behavior starts in `api/errors.yaml`.
-4. Apply Manifest-First edits for service identity, dependencies, capabilities, providers, and AI edit boundaries in `nucleus.yaml`.
+4. Apply Manifest-First edits for service identity, dependencies, capability indexes, and AI edit boundaries in `nucleus.yaml`.
 5. Write only paths allowed by `describe.edit_surfaces.allowed`.
-6. For an existing capability scaffold, prefer the CLI entrypoint:
-
-   ```bash
-   nucleus capability add <capability> --provider <provider> --dir .
-   ```
-
-   When MCP is available, call `get_capability_recipe` first and follow its `scaffold_command` / `bridge_candidates[].scaffold_command`. The CLI supports every registered Nucleus capability. Some providers generate deep wiring, while others create a manifest/provider placeholder that must be replaced with real bridge construction in `internal/app`. For PostgreSQL persistence, use `nucleus capability add sql --provider postgres --dir .`. `sql` is the capability; `postgres` is a provider/bridge choice. MongoDB is not SQL; use `mongo` capability flows when available.
+6. For a capability or provider decision, keep provider, library, ORM, driver, SDK, DSN, and wiring choices out of `nucleus.yaml`. Record the technical choice as structured decision evidence under `.nucleus/decisions`, then implement the user-project interface in paths allowed by the project.
 7. Regenerate instead of manually editing generated files:
 
    ```bash
    nucleus gen --dir .
    ```
 
-8. Verify with the service's declared commands, plus the Nucleus defaults when applicable:
+8. Verify with the service's declared commands:
 
    ```bash
    nucleus validate --dir .
    nucleus lint --dir . --strict
    nucleus verify --dir . --json
-   go test ./...
    ```
 
 9. Repair only from evidence and only inside allowed edit surfaces:
@@ -70,10 +63,10 @@ Read `edit_surfaces`, `generated_freshness`, `capability_graph`, `verification.c
 
 Stop and report the blocker instead of guessing when:
 
-- `nucleus.yaml` is missing and required bootstrap inputs are unavailable.
+- `nucleus.yaml` is missing and `nucleus adopt` cannot be run safely.
 - A requested edit falls outside `describe.edit_surfaces.allowed`.
 - The plan includes `blocked_edits[]` that would be required for the task.
-- A Manifest-First capability/provider change requires `nucleus.yaml` but it is blocked; do not add provider imports or app wiring as a workaround.
+- A Manifest-First capability change requires `nucleus.yaml` but it is blocked; do not add provider imports or app wiring as a workaround.
 - HTTP, gRPC, or error behavior is requested without contract edits.
 - Capability code is added without a matching `nucleus.yaml` declaration.
 - A generated file would need manual editing.

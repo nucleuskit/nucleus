@@ -10,12 +10,13 @@ import (
 
 func TestServeCommandJSONRootWiring(t *testing.T) {
 	dir := t.TempDir()
-	writeRootServeFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeRootServeFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
 capabilities:
-  - http
+  - id: http
+    kind: http
 `)
 	writeRootServeFile(t, dir, "api/openapi.yaml", `openapi: 3.0.3
 paths:
@@ -44,7 +45,7 @@ paths:
 		t.Fatalf("decode serve output: %v\n%s", err, stdout.String())
 	}
 	assertString(t, output, "result_kind", "nucleus.serve_result")
-	assertString(t, output, "schema_ref", "contract/schema/serve.schema.json")
+	assertString(t, output, "schema_ref", "contract/schema/serve-result.v1.schema.json")
 	assertString(t, output, "mode", "check")
 	assertBool(t, output, "ok", true)
 	summary := assertMap(t, output, "summary")

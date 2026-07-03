@@ -8,6 +8,7 @@ import (
 	"github.com/nucleuskit/contract/diagnostic"
 	"github.com/nucleuskit/contract/inspect"
 	contractlint "github.com/nucleuskit/contract/lint"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/decision"
 )
 
 type verifyResult struct {
@@ -32,6 +33,7 @@ type verifySummary struct {
 
 type verifyStep struct {
 	ID                 string                       `json:"id"`
+	Kind               string                       `json:"kind"`
 	Sequence           int                          `json:"sequence"`
 	Phase              string                       `json:"phase"`
 	Command            string                       `json:"command"`
@@ -45,6 +47,7 @@ type verifyStep struct {
 	Error              string                       `json:"error,omitempty"`
 	ChangedPaths       []string                     `json:"changed_paths,omitempty"`
 	GeneratedFreshness []inspect.GeneratedFreshness `json:"generated_freshness,omitempty"`
+	DecisionQuality    *decision.QualitySummary     `json:"decision_quality,omitempty"`
 }
 
 func renderHuman(stdout io.Writer, stderr io.Writer, result verifyResult) {

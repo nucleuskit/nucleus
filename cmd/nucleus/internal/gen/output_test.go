@@ -25,6 +25,12 @@ func TestRenderJSONUsesStableEmptyArrays(t *testing.T) {
 	if got := output["result_kind"]; got != resultKindGen {
 		t.Fatalf("result_kind = %v, want %s", got, resultKindGen)
 	}
+	if got := output["schema_version"]; got != schemaVersionGen {
+		t.Fatalf("schema_version = %v, want %s", got, schemaVersionGen)
+	}
+	if got := output["schema_ref"]; got != schemaRefGen {
+		t.Fatalf("schema_ref = %v, want %s", got, schemaRefGen)
+	}
 	if _, ok := output["files"].([]any); !ok {
 		t.Fatalf("files has type %T, want []any", output["files"])
 	}

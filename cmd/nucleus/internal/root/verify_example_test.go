@@ -12,7 +12,7 @@ func TestVerifyCommandJSONRootWiring(t *testing.T) {
 	dir := t.TempDir()
 	writeRootVerifyFile(t, dir, "go.mod", "module example.com/demo\n\ngo 1.26.3\n")
 	writeRootVerifyFile(t, dir, "demo.go", "package demo\n")
-	writeRootVerifyFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeRootVerifyFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"

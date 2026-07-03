@@ -1,12 +1,14 @@
 package lint
 
 const (
-	commandUseLint   = "lint"
-	commandShortLint = "run Nucleus architecture lint rules"
-	defaultDir       = "."
-	resultKindLint   = "nucleus.lint_result"
-	jsonIndentPrefix = ""
-	jsonIndentValue  = "  "
+	commandUseLint    = "lint"
+	commandShortLint  = "run Nucleus architecture lint rules"
+	defaultDir        = "."
+	resultKindLint    = "nucleus.lint_result"
+	schemaVersionLint = "lint-result.v1"
+	schemaRefLint     = "contract/schema/lint-result.v1.schema.json"
+	jsonIndentPrefix  = ""
+	jsonIndentValue   = "  "
 )
 
 const (

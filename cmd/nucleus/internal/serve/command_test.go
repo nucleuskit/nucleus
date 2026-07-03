@@ -299,7 +299,7 @@ func waitForJSONOutput(t *testing.T, buffer *lockedBuffer) map[string]any {
 	return nil
 }
 
-func TestCheckCommandRendersJSONDiagnosticsOnInspectFailure(t *testing.T) {
+func TestCheckCommandRendersJSONForProjectWithoutManifest(t *testing.T) {
 	dir := t.TempDir()
 	cmd := NewCommand(Config{Dir: &dir})
 	var stdout bytes.Buffer
@@ -307,18 +307,25 @@ func TestCheckCommandRendersJSONDiagnosticsOnInspectFailure(t *testing.T) {
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"--check", "--json"})
 
-	if err := cmd.Execute(); err == nil {
-		t.Fatalf("expected serve --check --json to fail for missing manifest")
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute serve --check --json: %v", err)
 	}
 
 	var output map[string]any
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("decode JSON: %v\n%s", err, stdout.String())
 	}
-	if output["ok"] != false {
-		t.Fatalf("ok = %v, want false", output["ok"])
+	if output["ok"] != true {
+		t.Fatalf("ok = %v, want true", output["ok"])
 	}
-	assertDiagnosticCode(t, output, diagnosticInspectFailed)
+	summary := requireMap(t, output, "summary")
+	if summary["service"] == "" {
+		t.Fatalf("summary.service should be inferred: %#v", summary)
+	}
+	diagnostics := requireSlice(t, output, "diagnostics")
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v, want empty", diagnostics)
+	}
 }
 
 func assertDiagnosticCode(t *testing.T, output map[string]any, want string) {

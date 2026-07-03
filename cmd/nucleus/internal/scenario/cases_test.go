@@ -44,7 +44,7 @@ func TestLoadAndRunHTTPCasesWithAssertionDSL(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if evidence["pass"] != true {
+	if evidence["result_kind"] != httpEvidenceKind || evidence["schema_ref"] != evidenceSchemaRef || evidence["ok"] != true {
 		t.Fatalf("expected case evidence to pass: %#v", evidence)
 	}
 	results := evidence["assertion_results"].([]map[string]any)
@@ -110,7 +110,7 @@ func TestRunHTTPCasesWithBaseURLPreservesQueryString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if evidence["pass"] != true {
+	if evidence["ok"] != true {
 		t.Fatalf("unexpected evidence: %#v", evidence)
 	}
 }

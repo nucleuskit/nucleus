@@ -10,12 +10,14 @@ import (
 )
 
 type genResult struct {
-	ResultKind  string                 `json:"result_kind"`
-	OK          bool                   `json:"ok"`
-	SourceHash  string                 `json:"source_hash,omitempty"`
-	Summary     genSummary             `json:"summary"`
-	Files       []string               `json:"files"`
-	Diagnostics diagnostic.Diagnostics `json:"diagnostics"`
+	ResultKind    string                 `json:"result_kind"`
+	SchemaVersion string                 `json:"schema_version"`
+	SchemaRef     string                 `json:"schema_ref"`
+	OK            bool                   `json:"ok"`
+	SourceHash    string                 `json:"source_hash,omitempty"`
+	Summary       genSummary             `json:"summary"`
+	Files         []string               `json:"files"`
+	Diagnostics   diagnostic.Diagnostics `json:"diagnostics"`
 }
 
 func renderHuman(stdout io.Writer, stderr io.Writer, result genResult) {
@@ -46,6 +48,8 @@ func renderHuman(stdout io.Writer, stderr io.Writer, result genResult) {
 
 func renderJSON(writer io.Writer, result genResult, pretty bool) error {
 	result.ResultKind = resultKindGen
+	result.SchemaVersion = schemaVersionGen
+	result.SchemaRef = schemaRefGen
 	if result.Files == nil {
 		result.Files = []string{}
 	}

@@ -3,27 +3,29 @@
 [![CI](https://github.com/nucleuskit/nucleus/actions/workflows/ci.yml/badge.svg)](https://github.com/nucleuskit/nucleus/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Nucleus is an AI-first Go microservice kernel for contract-driven service generation, evolution, and verification.
+Nucleus is an agent-native Go microservice protocol layer for structured service inspection, bounded AI edits, technical decision evidence, and local verification.
 
-It is designed for AI agents, CI systems, and human reviewers to work from the same source of truth: service contracts, manifests, generated freshness, safe edit surfaces, and verification evidence.
+It is designed for AI agents, CI systems, and human reviewers to work from the same local facts: service contracts, source graphs, manifest indexes, generated freshness, safe edit surfaces, decision evidence, and verification evidence.
 
 > Status: pre-alpha. The public repository is being prepared for the first source import under `github.com/nucleuskit/nucleus`.
 
-For a code-level view of what is implemented, what is scaffold-only, and the
-current module release status, see [Implementation Status](docs/implementation-status.md).
+For a code-level view of what is implemented, removed, and still in progress,
+see [Implementation Status](docs/implementation-status.md).
+
+For hands-on usage, see [Nucleus 使用指南](docs/usage.md).
 
 ## Why Nucleus
 
-Traditional Go microservice frameworks are optimized for humans writing code inside an IDE. Nucleus is optimized for AI agents changing services safely and repeatably.
+Traditional Go microservice frameworks are optimized for humans writing code inside an IDE. Nucleus is optimized for AI agents understanding and changing existing Go services safely and repeatably.
 
 Nucleus focuses on four rules:
 
 - **Contract-first**: OpenAPI, protobuf, and error definitions are the source of truth for external behavior.
-- **Manifest-first**: service identity, capabilities, dependencies, and AI edit surfaces are declared in `nucleus.yaml`.
-- **Thin kernel**: core lifecycle, identity, errors, context, and response types stay small and dependency-aware.
-- **AI-safe loop**: `describe -> plan -> lint -> verify` makes service changes reviewable, reproducible, and bounded.
+- **Manifest as protocol index**: service identity, contracts, capability anchors, AI edit surfaces, and verification commands are declared in `nucleus.yaml`.
+- **Graph-first inspection**: symbols, calls, interfaces, routes, tests, and generated freshness are exposed as machine-readable local facts.
+- **AI-safe loop**: `adopt -> mark -> describe graph -> trace -> impact -> plan -> decision -> verify`, with optional `mcp --stdio` access for agents, makes service changes reviewable, reproducible, and bounded.
 
-Nucleus is not a full-stack middleware bundle. Redis, Kafka, SQL, Nacos, tracing exporters, and similar infrastructure are connected through explicit capability interfaces and optional bridges.
+Nucleus is not a full-stack middleware bundle, project scaffold, provider SDK collection, or platform control plane. Redis, Kafka, SQL, Nacos, tracing exporters, ORMs, and similar infrastructure are user-project decisions recorded as explicit decision evidence.
 
 ## Core Concepts
 
@@ -35,55 +37,69 @@ A Nucleus service treats these files as public behavior contracts:
 - `api/proto/*.proto` for gRPC APIs
 - `api/errors.yaml` for stable error codes and HTTP mappings
 
-Generated handlers, types, clients, and freshness metadata are derived from these contracts.
+Generated artifacts, when used, are contract-derived only. They must carry freshness metadata and remain outside normal business edit surfaces.
 
 ### Manifest
 
-`nucleus.yaml` describes the service identity and machine-readable operating surface:
+`nucleus.yaml` describes the service identity and machine-readable protocol index:
 
-- service name, version, tier, and ownership
-- declared capabilities and providers
-- dependencies and contract snapshots
+- service name and metadata
+- declared contracts
+- capability anchors and symbols
 - edit surfaces for AI agents
 - verification commands for CI and local review
 
-### Capability Protocol
+Provider, library, ORM, and driver choices do not live in `nucleus.yaml`; they belong in `.nucleus/decisions/*.yaml`.
+
+### Capability Anchors
 
 Nucleus separates capability declaration from infrastructure implementation:
 
-- `github.com/nucleuskit/cap/*` defines small interfaces, options, and no-op implementations.
-- `github.com/nucleuskit/bridge/*` provides optional adapters.
-- Application wiring injects bridges into runtime code.
-- Domain code stays independent from transport and infrastructure SDKs.
+- capabilities are semantic anchors, not provider implementations
+- capability kinds are advisory vocabulary, not hard-coded enums
+- provider decisions live in `.nucleus/decisions/*.yaml`
+- recipes may suggest approaches, but cannot write files or execute commands
+- domain code and application wiring remain owned by the user project
 
 ### AI-Safe Change Loop
 
 The intended workflow inside a service directory is:
 
 ```text
+nucleus adopt --json
+nucleus mark contract http --kind openapi --path api/openapi.yaml
+nucleus mark capability order_store --kind relational_store --symbol OrderStore
 nucleus describe --json
-nucleus validate
+nucleus trace symbol <symbol> --json
+nucleus trace capability order_store --json
+nucleus impact symbol <symbol> --json
 nucleus plan --task "change request" --json
+nucleus decision validate .nucleus/decisions/<decision>.yaml
 nucleus gen
-nucleus scenario --json
-nucleus serve --check --json
 nucleus lint
 nucleus verify
 nucleus report --json
+nucleus mcp --stdio
 ```
 
-The goal is not just to generate code. The goal is to produce evidence that the change respected contracts, manifests, generated freshness, dependency boundaries, and verification commands.
+The goal is not just to generate code. The goal is to produce evidence that the change respected contracts, manifests, source graphs, locked decisions, generated freshness, edit surfaces, and verification commands.
 
-`describe` emits the service facts that agents and reviewers consume. `validate`
-checks manifest and contract source legality before later workflow steps. `lint`
-checks project conventions and risk rules, while `verify` executes the validation,
-lint, build, and test evidence pipeline.
+`adopt` adds a minimal protocol index to an existing Go project. It does not
+create business directories, choose providers, or modify `go.mod`.
 
-`gen` writes reproducible artifacts under generated targets such as
-`contract/gen` and `internal/adapter/http/gen`. Use `nucleus gen --json` when
-automation needs auditable evidence; the result includes
-`result_kind: "nucleus.gen_result"`, `ok`, `source_hash`, generated `files`,
-`summary`, and validation `diagnostics`.
+`describe` emits service facts that agents and reviewers consume. `trace` and
+`impact` expose call chains and change blast radius, while `plan` embeds a
+best-effort impact summary next to edit surfaces and verification commands.
+`lint` checks protocol consistency, safety boundaries, decision evidence,
+generated freshness, and stale graphs without requiring a fixed project layout.
+`verify` executes only manifest-declared verification commands and emits
+evidence.
+
+`gen` writes reproducible contract-derived artifacts only. It must not create
+application wiring, provider glue, runtime bootstraps, or dependency changes.
+Use `nucleus gen --json` when automation needs auditable evidence; the result
+includes `result_kind: "nucleus.gen_result"`, `ok`, `source_hash`, generated
+`files`, `summary`, and validation `diagnostics`.
 
 `scenario` turns OpenAPI routes, error catalogs, and flow inspection into
 reviewable test suggestions. Use `nucleus scenario --json` for a scenario plan,
@@ -99,43 +115,36 @@ without opening a listener, or `nucleus serve --addr 127.0.0.1:8080` to expose
 `/healthz`, `/readyz`, and `/.well-known/nucleus.json`. The command is
 metadata-only: it does not auto-wire provider SDKs or generated business
 handlers. JSON output uses `result_kind: "nucleus.serve_result"`,
-`schema_version: "serve.v1"`, `schema_ref:
-"contract/schema/serve.schema.json"`, `ok`, `mode`, `summary`, `diagnostics`,
-and `server`.
+`schema_version: "serve-result.v1"`, `schema_ref:
+"contract/schema/serve-result.v1.schema.json"`, `ok`, `mode`, `summary`,
+`diagnostics`, and `server`.
 
-`report` summarizes AI change quality and platform readiness without making
-network calls. By default it reads AI task result JSON files from
-`artifacts/nucleus/ai-tasks`; pass `--ai-tasks` for an explicit directory, or
-`--platform` to emit local release-readiness metadata from `contract/inspect`.
-Like other subcommands, the default output is human-readable and `--json` emits
-a stable envelope with `result_kind: "nucleus.report_result"`,
-`schema_version: "report.v1"`, `schema_ref:
-"contract/schema/report.schema.json"`, `ok`, `mode`, `summary`, and
-`diagnostics`.
+`report` summarizes local quality without making network calls or referencing a
+control plane. It reports graph coverage, decision quality, verification status,
+edit-surface violations, generated freshness, AI task evidence, unresolved
+symbols, and locked decision changes.
 
-For any service directory containing `nucleus.yaml` and contract sources, run
-`nucleus validate --dir <service>`. Successful human output includes a short
-validation summary; `--json` emits the same result with stable `ok`, `summary`,
-and `diagnostics` fields.
+`mcp` exposes the same local facts as structured stdio MCP tools for agents.
+It is read-only metadata access over contracts, edit surfaces, capabilities,
+symbol search, trace, impact, decisions, report, plan, and local recipes.
+
+Projects without OpenAPI, proto, or error catalogs are still valid Nucleus
+projects. They run in graph-only mode until a task touches external behavior.
 
 ## Project Shape
 
-The main repository hosts the CLI, examples, and public documentation:
+The main repository hosts the CLI, protocol schemas, source inspection code, and public documentation:
 
 ```text
-api/                 Contract files
 cmd/nucleus/         CLI implementation
-examples/            Runnable examples and templates
-docs/                Concepts, ADRs, plans, and platform mapping
+contract/schema/     Protocol schemas
+contract/inspect/    Source and contract inspection
+docs/                Concepts, ADRs, and plans
 ```
 
-The kernel, contract, capability, bridge, and runtime packages are published as
-separate Go modules:
+The contract and narrowly scoped runtime packages are published as separate Go modules:
 
-- `github.com/nucleuskit/core`
 - `github.com/nucleuskit/contract`
-- `github.com/nucleuskit/cap`
-- `github.com/nucleuskit/bridge`
 - `github.com/nucleuskit/http`
 - `github.com/nucleuskit/grpc`
 - `github.com/nucleuskit/worker`
@@ -145,10 +154,10 @@ separate Go modules:
 The early public roadmap is intentionally narrow:
 
 - Publish the source under `github.com/nucleuskit/nucleus`.
-- Stabilize the first `nucleus validate`, `gen`, `describe`, `plan`, `lint`, and `verify` loop.
-- Keep `core` standard-library-only.
-- Make `examples/hello-http` the first runnable contract-first service.
-- Add focused capability protocols before adding optional bridges.
+- Stabilize the first `adopt`, `describe graph`, `trace`, `impact`, `plan`, `decision`, `verify`, and local MCP loop.
+- Add protocol schemas for manifest v2, decisions, recipes, graphs, reports, diagnostics, and evidence.
+- Remove scaffold, provider bridge, and platform-readiness paths from the core boundary.
+- Keep generated artifacts contract-derived and readonly by default.
 - Publish `v0.1.0-alpha.1` once the public module path, CI, examples, and docs are aligned.
 
 ## Contributing
@@ -156,10 +165,10 @@ The early public roadmap is intentionally narrow:
 Nucleus is early, but contributions should already follow the project boundaries:
 
 - Start with contracts and manifests when changing external behavior.
-- Keep kernel code small and dependency-aware.
-- Prefer explicit capabilities over hidden framework defaults.
+- Keep protocol code small and dependency-aware.
+- Prefer explicit capability anchors and decisions over hidden framework defaults.
 - Add tests or verification evidence with behavior changes.
-- Do not add compatibility shims for private or legacy internal SDKs.
+- Do not add provider SDK adapters, scaffold defaults, or compatibility shims for private or legacy internal SDKs.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 

@@ -11,21 +11,17 @@ import (
 
 func TestBuildEvidenceRepairsMissingGeneratedEvidence(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
 ai:
   intent: test
 capabilities:
-  - http
+  - id: http
+    kind: http
 `)
 	writeFile(t, dir, "go.mod", "module example.com/demo\n\ngo 1.26.3\n\nrequire github.com/nucleuskit/http v0.0.0\n\nrequire (\n\tgithub.com/nucleuskit/cap v0.1.0-alpha.2 // indirect\n\tgithub.com/nucleuskit/core v0.1.0-alpha.2 // indirect\n)\n\n"+localRuntimeReplace(t))
-	writeFile(t, dir, "go.sum", `github.com/nucleuskit/cap v0.1.0-alpha.2 h1:UnBp5ezoi+UrgT92DwpTdQynrEnUNnsf3rQKB0pNfPw=
-github.com/nucleuskit/cap v0.1.0-alpha.2/go.mod h1:DLSQmS/6irYQfpWGJjce9+STvqG33yZMCxkwvdLf7XM=
-github.com/nucleuskit/core v0.1.0-alpha.2 h1:CT4RJvCYtVNo0+Gqyf5zx4T90dBiXq4JVhQxEKBXyJ8=
-github.com/nucleuskit/core v0.1.0-alpha.2/go.mod h1:fwIlIS28wLh/VQ/jhR4TgrZcrN1nOgrAxSYYYWRdEYk=
-`)
 	writeFile(t, dir, "demo.go", "package demo\n")
 	writeFile(t, dir, "internal/app/routes.go", `package app
 
@@ -55,13 +51,14 @@ paths:
 `)
 	evidencePath := filepath.Join(dir, "missing-generated-evidence.json")
 	writeFile(t, dir, "missing-generated-evidence.json", `{
-  "kind": "nucleus.apply_evidence",
-  "pass": false,
+  "result_kind": "nucleus.apply_evidence",
+  "ok": false,
   "steps": [
     {
       "id": "missing_generated",
       "kind": "missing_generated",
-      "pass": false,
+      "status": "failed",
+      "ok": false,
       "path": "contract/gen/endpoints.go"
     }
   ]
@@ -88,7 +85,7 @@ paths:
 
 func TestBuildEvidenceDoesNotRepairVagueMissingGeneratedReason(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -102,13 +99,14 @@ capabilities: []
 	writeFile(t, dir, "api/errors.yaml", "errors: []\n")
 	evidencePath := filepath.Join(dir, "vague-evidence.json")
 	writeFile(t, dir, "vague-evidence.json", `{
-  "kind": "nucleus.apply_evidence",
-  "pass": false,
+  "result_kind": "nucleus.apply_evidence",
+  "ok": false,
   "steps": [
     {
       "id": "custom_failure",
       "kind": "custom_failure",
-      "pass": false,
+      "status": "failed",
+      "ok": false,
       "reason": "missing generated text in README"
     }
   ]
@@ -130,12 +128,14 @@ func TestBuildEvidenceAppliesSafeBusinessPatch(t *testing.T) {
 	writeFile(t, dir, "examples/hello-http/internal/adapter/http/handler.go", original)
 	evidencePath := filepath.Join(dir, "evidence.json")
 	writeFile(t, dir, "evidence.json", `{
-  "kind": "nucleus.verify_result",
-  "pass": false,
+  "result_kind": "nucleus.verify_result",
+  "ok": false,
   "steps": [
     {
       "id": "go_test",
-      "pass": false,
+      "kind": "verify_command",
+      "status": "failed",
+      "ok": false,
       "repair_suggestion": {
         "file": "examples/hello-http/internal/adapter/http/handler.go",
         "find": "return \"broken\"",
@@ -181,8 +181,8 @@ func TestBuildEvidenceRejectsBusinessPatchOutsideAllowedSurface(t *testing.T) {
 	writeFile(t, dir, "configs/prod.yaml", original)
 	evidencePath := filepath.Join(dir, "evidence.json")
 	writeFile(t, dir, "evidence.json", `{
-  "kind": "nucleus.verify_result",
-  "pass": false,
+  "result_kind": "nucleus.verify_result",
+  "ok": false,
   "failure": {
     "fix_candidate": {
       "file": "configs/prod.yaml",
@@ -214,8 +214,8 @@ func TestBuildEvidenceRejectsBusinessPatchWithMultipleFindMatches(t *testing.T) 
 	writeFile(t, dir, "internal/domain/service.go", original)
 	evidencePath := filepath.Join(dir, "evidence.json")
 	writeFile(t, dir, "evidence.json", `{
-  "kind": "nucleus.verify_result",
-  "pass": false,
+  "result_kind": "nucleus.verify_result",
+  "ok": false,
   "failure": {
     "fix_candidate": {
       "file": "internal/domain/service.go",
@@ -247,8 +247,8 @@ func TestBuildEvidenceRejectsBusinessPatchWithHashMismatch(t *testing.T) {
 	writeFile(t, dir, "internal/domain/service.go", original)
 	evidencePath := filepath.Join(dir, "evidence.json")
 	writeFile(t, dir, "evidence.json", `{
-  "kind": "nucleus.verify_result",
-  "pass": false,
+  "result_kind": "nucleus.verify_result",
+  "ok": false,
   "failure": {
     "fix_candidate": {
       "file": "internal/domain/service.go",
@@ -290,8 +290,8 @@ func TestBuildEvidenceRejectsBusinessPatchSymlinkPath(t *testing.T) {
 	}
 	evidencePath := filepath.Join(dir, "evidence.json")
 	writeFile(t, dir, "evidence.json", `{
-  "kind": "nucleus.verify_result",
-  "pass": false,
+  "result_kind": "nucleus.verify_result",
+  "ok": false,
   "failure": {
     "fix_candidate": {
       "file": "internal/domain/service.go",
@@ -332,7 +332,7 @@ func writeFile(t *testing.T, dir string, name string, data string) {
 
 func writePatchableService(t *testing.T, dir string, allowed []string) {
 	t.Helper()
-	writeFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -382,5 +382,18 @@ func runtimeHTTPReplace(t *testing.T) string {
 
 func localRuntimeReplace(t *testing.T) string {
 	t.Helper()
-	return "replace github.com/nucleuskit/http => " + runtimeHTTPReplace(t) + "\n"
+	return strings.Join([]string{
+		"replace github.com/nucleuskit/http => " + runtimeHTTPReplace(t),
+		"replace github.com/nucleuskit/cap => " + localModulePath(t, "cap"),
+		"replace github.com/nucleuskit/core => " + localModulePath(t, "core"),
+	}, "\n\n") + "\n"
+}
+
+func localModulePath(t *testing.T, rel string) string {
+	t.Helper()
+	path, err := filepath.Abs(filepath.Join("../../../../", rel))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filepath.ToSlash(path)
 }

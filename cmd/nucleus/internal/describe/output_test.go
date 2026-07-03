@@ -9,15 +9,23 @@ import (
 func TestBuildOutputAddsDescribeMetadata(t *testing.T) {
 	dir := newDescribeFixture(t)
 	output, err := BuildOutput(OutputOptions{
-		Dir:            dir,
-		SchemaOverride: "9.9",
-		IncludeFlow:    true,
+		Dir:         dir,
+		IncludeFlow: true,
 	})
 	if err != nil {
 		t.Fatalf("BuildOutput() error = %v", err)
 	}
-	if got := output["schema_version"]; got != "9.9" {
-		t.Fatalf("schema_version = %v, want 9.9", got)
+	if got := output["result_kind"]; got != resultKindDescribe {
+		t.Fatalf("result_kind = %v, want %s", got, resultKindDescribe)
+	}
+	if got := output["schema_version"]; got != schemaVersionDescribe {
+		t.Fatalf("schema_version = %v, want %s", got, schemaVersionDescribe)
+	}
+	if got := output["schema_ref"]; got != schemaRefDescribe {
+		t.Fatalf("schema_ref = %v, want %s", got, schemaRefDescribe)
+	}
+	if got := output["ok"]; got != true {
+		t.Fatalf("ok = %v, want true", got)
 	}
 	if output["flow_graph"] == nil {
 		t.Fatal("flow_graph missing")
@@ -31,6 +39,9 @@ func TestBuildOutputAddsDescribeMetadata(t *testing.T) {
 	}
 	if got := verification["evidence_schema"]; got != verificationEvidenceSchema {
 		t.Fatalf("verification.evidence_schema = %v, want %s", got, verificationEvidenceSchema)
+	}
+	if got := verification["project_commands_source"]; got != verificationProjectCommandSource {
+		t.Fatalf("verification.project_commands_source = %v, want %s", got, verificationProjectCommandSource)
 	}
 	schemaPath := filepath.Join("..", "..", "..", "..", filepath.FromSlash(verificationEvidenceSchema))
 	if _, err := os.Stat(schemaPath); err != nil {
@@ -54,8 +65,8 @@ func TestBuildOutputUsesDefaultSchemaVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildOutput() error = %v", err)
 	}
-	if got := output["schema_version"]; got != defaultSchemaVersion {
-		t.Fatalf("schema_version = %v, want %s", got, defaultSchemaVersion)
+	if got := output["schema_version"]; got != schemaVersionDescribe {
+		t.Fatalf("schema_version = %v, want %s", got, schemaVersionDescribe)
 	}
 	if output["flow_graph"] != nil {
 		t.Fatal("flow_graph present without IncludeFlow")
@@ -65,12 +76,11 @@ func TestBuildOutputUsesDefaultSchemaVersion(t *testing.T) {
 func newDescribeFixture(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	manifest := []byte(`schema_version: "1.0"
+	manifest := []byte(`schema_version: "2.0"
 service:
   name: fixture
   version: "0.1.0"
 ai: {}
-nucleus: {}
 `)
 	if err := os.WriteFile(filepath.Join(dir, "nucleus.yaml"), manifest, 0o600); err != nil {
 		t.Fatalf("write nucleus.yaml: %v", err)
@@ -86,11 +96,8 @@ func assertVerificationPipeline(t *testing.T, pipeline []map[string]any) {
 	}{
 		{phaseValidate, commandValidate},
 		{phaseLint, commandLintStrict},
+		{phaseDecision, commandDecisionValidate},
 		{phaseGeneratedFreshness, commandDescribeJSON},
-		{phaseTidy, commandGoModTidy},
-		{phaseImport, commandGoListAll},
-		{phaseBuild, commandGoTestCompileOnly},
-		{phaseTest, commandGoTestAll},
 	}
 	if len(pipeline) != len(want) {
 		t.Fatalf("pipeline length = %d, want %d", len(pipeline), len(want))

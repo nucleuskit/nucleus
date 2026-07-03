@@ -32,8 +32,8 @@ func renderJSON(writer io.Writer, evidence map[string]any, pretty bool) error {
 }
 
 func evidencePass(evidence map[string]any) bool {
-	pass, _ := evidence["pass"].(bool)
-	return pass
+	ok, _ := evidence["ok"].(bool)
+	return ok
 }
 
 func stringField(evidence map[string]any, key string) string {
@@ -60,13 +60,13 @@ func failedSteps(evidence map[string]any) int {
 	case []any:
 		for _, value := range steps {
 			step, ok := value.(map[string]any)
-			if ok && step["pass"] == false {
+			if ok && step["ok"] == false {
 				failed++
 			}
 		}
 	case []map[string]any:
 		for _, step := range steps {
-			if step["pass"] == false {
+			if step["ok"] == false {
 				failed++
 			}
 		}

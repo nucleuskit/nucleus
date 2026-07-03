@@ -68,7 +68,7 @@ func TestCommandJSONSuccess(t *testing.T) {
 
 func TestCommandJSONValidationFailure(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   version: "0.1.0"
 ai:
@@ -187,7 +187,7 @@ func TestCommandJSONUnsupportedClientLanguage(t *testing.T) {
 
 func writeService(t *testing.T, dir string) {
 	t.Helper()
-	writeFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -198,7 +198,8 @@ ai:
     - internal/adapter/http/gen
     - sdk/typescript
 capabilities:
-  - http
+  - id: http
+    kind: http
 `)
 	writeFile(t, dir, "api/openapi.yaml", `openapi: 3.0.3
 paths:

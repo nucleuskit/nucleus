@@ -60,7 +60,7 @@ func ExecutePlanCommands(dir string, planPath string, allowlist []string) (map[s
 	pass := true
 	for index, command := range plan.Commands {
 		step, logEntry, exitCode := executePlanCommand(dir, command, index, allowedCommands)
-		if stepPass, _ := step["pass"].(bool); !stepPass {
+		if stepOK, _ := step["ok"].(bool); !stepOK {
 			pass = false
 		}
 		steps = append(steps, step)
@@ -73,11 +73,13 @@ func ExecutePlanCommands(dir string, planPath string, allowlist []string) (map[s
 		status = "failed"
 	}
 	return map[string]any{
-		"schema_version":      "evidence.v1",
-		"kind":                "nucleus.executor_evidence",
-		"pass":                pass,
+		"result_kind":         resultKindExecutorEvidence,
+		"schema_version":      schemaVersionEvidence,
+		"schema_ref":          schemaRefEvidence,
+		"ok":                  pass,
 		"status":              status,
 		"steps":               steps,
+		"diagnostics":         []map[string]any{},
 		"logs":                logs,
 		"exit_codes":          exitCodes,
 		"assertion_results":   assertionResults(plan.Assertions, steps),
@@ -111,24 +113,24 @@ func executePlanCommand(dir string, command planCommand, index int, allowlist ma
 	}
 	args, err := splitCommand(command.Command)
 	if err != nil || len(args) == 0 {
-		step["pass"] = false
-		step["status"] = "failed"
+		step["ok"] = false
+		step["status"] = statusFailed
 		step["exit_code"] = 1
 		step["stderr"] = redact(errorString(err, "empty command"))
 		return step, logEntry(id, "stderr", step["stderr"].(string)), exitCodeEntry(id, command.Command, 1)
 	}
 	commandName := filepath.Base(args[0])
 	if !allowlist[commandName] {
-		step["pass"] = false
-		step["status"] = "blocked"
+		step["ok"] = false
+		step["status"] = statusBlocked
 		step["exit_code"] = 126
 		step["command_name"] = commandName
 		step["stderr"] = "command is not in executor allowlist"
 		return step, logEntry(id, "stderr", step["stderr"].(string)), exitCodeEntry(id, command.Command, 126)
 	}
 	if command.Allowed != nil && !*command.Allowed {
-		step["pass"] = false
-		step["status"] = "blocked"
+		step["ok"] = false
+		step["status"] = statusBlocked
 		step["exit_code"] = 126
 		step["command_name"] = commandName
 		step["stderr"] = "plan command is marked as not allowed"
@@ -136,8 +138,8 @@ func executePlanCommand(dir string, command planCommand, index int, allowlist ma
 	}
 	cwd, err := resolveCWD(dir, command)
 	if err != nil {
-		step["pass"] = false
-		step["status"] = "failed"
+		step["ok"] = false
+		step["status"] = statusFailed
 		step["exit_code"] = 1
 		step["command_name"] = commandName
 		step["stderr"] = redact(err.Error())
@@ -162,22 +164,22 @@ func executePlanCommand(dir string, command planCommand, index int, allowlist ma
 	step["command_name"] = commandName
 	step["log_summary"] = summary
 	if ctx.Err() == context.DeadlineExceeded {
-		step["pass"] = false
-		step["status"] = "timeout"
+		step["ok"] = false
+		step["status"] = statusTimeout
 		step["exit_code"] = 124
 		step["stderr"] = fmt.Sprintf("command timed out after %d seconds", timeout)
 		return step, logEntry(id, "combined", summary), exitCodeEntry(id, command.Command, 124)
 	}
 	if err != nil {
 		exitCode := commandExitCode(err)
-		step["pass"] = false
-		step["status"] = "failed"
+		step["ok"] = false
+		step["status"] = statusFailed
 		step["exit_code"] = exitCode
 		step["stderr"] = redact(err.Error())
 		return step, logEntry(id, "combined", summary), exitCodeEntry(id, command.Command, exitCode)
 	}
-	step["pass"] = true
-	step["status"] = "passed"
+	step["ok"] = true
+	step["status"] = statusPassed
 	step["exit_code"] = 0
 	return step, logEntry(id, "combined", summary), exitCodeEntry(id, command.Command, 0)
 }

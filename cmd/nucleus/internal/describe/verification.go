@@ -2,8 +2,6 @@ package describe
 
 func verificationCommands() []string {
 	return []string{
-		commandValidate,
-		commandLintStrict,
 		commandVerifyJSON,
 	}
 }
@@ -13,6 +11,7 @@ func verificationContract() map[string]any {
 	return map[string]any{
 		verificationFieldCommands:       verificationCommands(),
 		verificationFieldPipeline:       verificationPipeline(),
+		verificationFieldProjectSource:  verificationProjectCommandSource,
 		verificationFieldResultKind:     verificationResultKind,
 		verificationFieldEvidenceSchema: verificationEvidenceSchema,
 		verificationFieldOptional:       optionalEvidence(),
@@ -28,11 +27,8 @@ func verificationPipeline() []map[string]any {
 	}{
 		{phaseValidate, phaseValidate, commandValidate},
 		{phaseLint, phaseLint, commandLintStrict},
+		{phaseDecision, phaseDecision, commandDecisionValidate},
 		{phaseGeneratedFreshness, phaseGeneratedFreshness, commandDescribeJSON},
-		{phaseTidy, phaseTidy, commandGoModTidy},
-		{phaseImport, phaseImport, commandGoListAll},
-		{phaseBuild, phaseBuild, commandGoTestCompileOnly},
-		{phaseTest, phaseTest, commandGoTestAll},
 	}
 	pipeline := make([]map[string]any, 0, len(steps))
 	for index, step := range steps {
@@ -52,7 +48,7 @@ func optionalEvidence() []map[string]any {
 	return []map[string]any{
 		{
 			pipelineFieldID:        "scenario_plan",
-			pipelineFieldPhase:     phaseTest,
+			pipelineFieldPhase:     phaseScenario,
 			pipelineFieldCommand:   commandScenarioPlanJSON,
 			pipelineFieldSchemaRef: "",
 			pipelineFieldProduces:  "nucleus.scenario_plan_result",
@@ -60,7 +56,7 @@ func optionalEvidence() []map[string]any {
 		},
 		{
 			pipelineFieldID:        "http_scenario",
-			pipelineFieldPhase:     phaseTest,
+			pipelineFieldPhase:     phaseScenario,
 			pipelineFieldCommand:   commandScenarioRunJSON,
 			pipelineFieldSchemaRef: verificationEvidenceSchema,
 			pipelineFieldProduces:  evidenceKindHTTPScenario,

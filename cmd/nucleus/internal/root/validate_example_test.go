@@ -35,7 +35,7 @@ func TestValidateCommandWithHelloHTTPExample(t *testing.T) {
 
 func TestValidateCommandReportsDiagnostics(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "nucleus.yaml"), []byte(`schema_version: "1.0"
+	if err := os.WriteFile(filepath.Join(dir, "nucleus.yaml"), []byte(`schema_version: "2.0"
 service:
   version: "0.1.0"
 ai:

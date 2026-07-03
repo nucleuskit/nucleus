@@ -1,0 +1,137 @@
+{
+  "schema_version": "capability-kinds.v1",
+  "kinds": [
+    {
+      "name": "http",
+      "description": "inbound HTTP contract surface",
+      "planning": false,
+      "aliases": ["http", "http api", "rest", "openapi", "接口"]
+    },
+    {
+      "name": "grpc",
+      "description": "inbound gRPC contract surface",
+      "planning": false,
+      "aliases": ["grpc", "rpc", "proto"]
+    },
+    {
+      "name": "worker",
+      "description": "background worker or job entrypoint",
+      "planning": false,
+      "aliases": ["worker", "job", "cron", "任务", "作业"]
+    },
+    {
+      "name": "log",
+      "description": "structured logging capability",
+      "planning": true,
+      "aliases": ["log", "logging", "logger", "日志"]
+    },
+    {
+      "name": "trace",
+      "description": "distributed tracing capability",
+      "planning": true,
+      "aliases": ["trace", "tracing", "span", "链路", "追踪"]
+    },
+    {
+      "name": "config",
+      "description": "configuration source capability",
+      "planning": true,
+      "aliases": ["config", "configuration", "配置"]
+    },
+    {
+      "name": "httpclient",
+      "description": "outbound HTTP client capability",
+      "planning": true,
+      "aliases": ["httpclient", "http client", "outbound http", "外部 http", "调用外部接口"]
+    },
+    {
+      "name": "transport",
+      "description": "outbound transport policy capability",
+      "planning": true,
+      "aliases": ["transport", "net dialer", "network transport", "传输"]
+    },
+    {
+      "name": "discovery",
+      "description": "service discovery capability",
+      "planning": true,
+      "aliases": ["discovery", "service discovery", "registry", "注册", "发现"]
+    },
+    {
+      "name": "metric",
+      "description": "metrics capability",
+      "planning": true,
+      "aliases": ["metric", "metrics", "monitoring", "指标", "监控"]
+    },
+    {
+      "name": "auth",
+      "description": "authentication or authorization capability",
+      "planning": true,
+      "aliases": ["auth", "authentication", "authorization", "认证", "鉴权", "权限"]
+    },
+    {
+      "name": "health",
+      "description": "health check capability",
+      "planning": true,
+      "aliases": ["health", "healthz", "readiness", "健康检查", "就绪检查"]
+    },
+    {
+      "name": "sql",
+      "description": "relational persistence capability",
+      "planning": true,
+      "aliases": ["sql", "database", "relational", "mysql", "postgres", "postgresql", "pg", "gorm", "xorm", "数据库", "关系型", "入库", "持久化"]
+    },
+    {
+      "name": "redis",
+      "description": "Redis-compatible cache or data structure capability",
+      "planning": true,
+      "aliases": ["redis", "cache", "缓存"]
+    },
+    {
+      "name": "mongo",
+      "description": "document persistence capability",
+      "planning": true,
+      "aliases": ["mongo", "mongodb", "document database", "文档库"]
+    },
+    {
+      "name": "kv",
+      "description": "key-value persistence capability",
+      "planning": true,
+      "aliases": ["kv", "key value", "key-value", "键值"]
+    },
+    {
+      "name": "mq",
+      "description": "message queue or stream capability",
+      "planning": true,
+      "aliases": ["mq", "queue", "message queue", "kafka", "sarama", "nats", "amqp", "rabbit", "消息", "队列"]
+    },
+    {
+      "name": "store",
+      "description": "generic store capability",
+      "planning": true,
+      "aliases": ["store", "storage", "repository", "存储"]
+    },
+    {
+      "name": "lock",
+      "description": "locking capability",
+      "planning": true,
+      "aliases": ["lock", "distributed lock", "锁", "分布式锁"]
+    },
+    {
+      "name": "sentinel",
+      "description": "rate limiting or circuit breaking capability",
+      "planning": true,
+      "aliases": ["sentinel", "rate limit", "circuit breaker", "限流", "熔断"]
+    },
+    {
+      "name": "errortracker",
+      "description": "error tracking capability",
+      "planning": true,
+      "aliases": ["errortracker", "error tracking", "sentry", "错误追踪"]
+    },
+    {
+      "name": "profiler",
+      "description": "profiling capability",
+      "planning": true,
+      "aliases": ["profiler", "profiling", "pyroscope", "profile", "性能剖析"]
+    }
+  ]
+}

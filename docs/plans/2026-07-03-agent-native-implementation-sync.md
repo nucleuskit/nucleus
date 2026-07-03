@@ -1,0 +1,337 @@
+# Agent-Native Nucleus Implementation Sync
+
+This tracker follows [2026-07-03-agent-native-nucleus-redesign.md](2026-07-03-agent-native-nucleus-redesign.md).
+
+## Current Focus
+
+Implement the redesign in breaking-change order. The project is pre-release, so incompatible scaffold, provider, bridge, and platform paths should be removed or rewritten instead of preserved.
+
+## Status
+
+### Completed
+
+- [x] Added ADR 0002 for the agent-native protocol-layer direction.
+- [x] Updated ADR 0001 to remove scaffold, bridge, provider SDK, and platform ownership from project scope.
+- [x] Added protocol schema files:
+  - `contract/schema/manifest.v2.schema.json`
+  - `contract/schema/decision.v1.schema.json`
+  - `contract/schema/recipe.v1.schema.json`
+  - `contract/schema/graph.v1.schema.json`
+  - `contract/schema/mark-result.v1.schema.json`
+  - `contract/schema/adopt-result.v1.schema.json`
+  - `contract/schema/mcp-result.v1.schema.json`
+  - `contract/schema/recipe-result.v1.schema.json`
+  - `contract/schema/decision-result.v1.schema.json`
+  - `contract/schema/trace-result.v1.schema.json`
+  - `contract/schema/impact-result.v1.schema.json`
+  - `contract/schema/serve-result.v1.schema.json`
+  - `contract/schema/report.v1.schema.json`
+  - `contract/schema/describe-result.v1.schema.json`
+  - `contract/schema/validate-result.v1.schema.json`
+  - `contract/schema/lint-result.v1.schema.json`
+  - `contract/schema/gen-result.v1.schema.json`
+  - `contract/schema/scenario-result.v1.schema.json`
+  - `contract/schema/plan-result.v1.schema.json`
+  - `contract/schema/plan-executable.v1.schema.json`
+  - `contract/schema/diagnostic.v1.schema.json`
+  - `contract/schema/evidence.v1.schema.json`
+- [x] Updated README positioning from old kernel/scaffold/platform language to agent-native protocol-layer language.
+- [x] Restored the root CLI compile path by adding `contract/openapi.RequestShape`, `LoadRequestShapes`, and request-body/schema resolution tests.
+- [x] Changed `cmd/nucleus/main.go` to print command errors to stderr instead of returning a silent `exit status 1`.
+- [x] Changed `inspect.Describe` so a Go project without `nucleus.yaml` still returns structured inferred facts plus a `manifest.missing` warning diagnostic.
+- [x] Tightened default edit surfaces to protocol files only: `nucleus.yaml`, `.nucleus/**`, `api/**`, and `docs/**`; `go.mod`, `go.sum`, and fixed `internal/**` paths are no longer allowed by default.
+- [x] Removed provider/module decisions from capability planning:
+  - no `provider_hint`
+  - no `capability add --provider` command
+  - no fixed `github.com/nucleuskit/cap/...` module mapping in plan context
+  - provider/library/driver selection is represented as decision evidence only
+- [x] Removed `inspect.CapabilityModule()` and changed strict capability lint so it no longer binds capabilities to fixed provider/library imports. HTTP remains contract-backed and is still checked against OpenAPI/generated route evidence.
+- [x] Added regression tests for decision-only capability planning and no-manifest describe behavior.
+- [x] Added `cmd/nucleus/internal/adopt` and root `nucleus adopt` command.
+  - writes only `nucleus.yaml` and `.nucleus/*`
+  - emits `nucleus.adopt_result`
+  - detects `go.mod`, package summaries, contract candidates, test command candidates, generated file candidates, and symbol counts
+  - does not execute commands, access the network, generate business code, or modify `go.mod/go.sum`
+- [x] Deleted the old `cmd/nucleus/internal/initcmd` template generator and removed `nucleus init` from the root command surface.
+- [x] Deleted the old `cmd/nucleus/internal/capability` provider scaffold command and removed `nucleus capability add` from the root command surface.
+- [x] Removed `report --platform`, platform readiness report structures, upload/release dry-run fields, provider strategy report fields, and platform mapping documentation.
+- [x] Deleted obsolete template and local platform examples:
+  - removed `examples/service`, `examples/worker`, and `examples/library` README entries that documented `nucleus init --template`
+  - removed `examples/deploy/docker` local stack files for Nacos, Redis, Kafka, OTel, Jaeger, and Prometheus
+- [x] Updated serve tests for the no-manifest inspection model.
+- [x] Updated implementation status documentation to reflect the current agent-native CLI surface.
+- [x] Replaced the old Go `capcatalog` provider/default-provider catalog with data vocabulary:
+  - added `cmd/nucleus/internal/capvocab/capability-kinds.v1.json`
+  - added `capvocab.MatchTask`
+  - removed `cmd/nucleus/internal/capcatalog`
+  - vocabulary contains capability kind names/aliases/descriptions only, with no provider/library/driver/default metadata
+  - fixed the old natural-language false positive where `catalog` matched `log`
+- [x] Rewrote runtime manifest parsing to the v2 protocol model:
+  - `contract/manifest.Manifest` now uses `contracts`, capability objects, `ai`, `verify`, and `dependencies`
+  - removed the old `Nucleus` config block and platform/provider fields from the Go manifest type
+  - `manifest.Load` now uses strict YAML field decoding, so removed fields such as `nucleus`, `platform_url`, `providers`, `provider`, `library`, and `driver` fail instead of being ignored
+  - lint, validation, and describe now read capability `kind`/`id` from v2 capability objects instead of v1 string capabilities
+  - manifest schema now matches runtime requirements for `service.name` and `service.version`, while `ai.allowed_changes` remains optional because CLI defaults provide protocol edit boundaries
+- [x] Added `nucleus decision validate`:
+  - validates explicit files, directories, or default `.nucleus/decisions`
+  - emits `nucleus.decision_validate_result`
+  - checks `decision.v1` shape, manifest capability existence, provider/library/driver evidence, impact file edit surfaces, verification commands, locked `decision_hash`, and `supersedes_hash`
+  - computes canonical `sha256:<base64url>` hashes from JSON payloads excluding `accepted_at`
+  - does not create locked decisions, accept decisions, write files, execute commands, or modify `go.mod/go.sum`
+- [x] Added `describe` symbol graph MVP in `contract/inspect`:
+  - emits `symbol_graph` with `graph.v1`
+  - defines stable Go symbol IDs such as `go://<module>/<package>#<symbol>` and `go://<module>/<package>#<receiver>.<method>`
+  - outputs package, file, type, interface, function, method, const, and var nodes
+  - outputs `contains`, `imports`, `declares`, `calls`, `implements`, `accepts`, `returns`, and heuristic `tests` edges
+  - every edge carries `source`, `confidence`, and `stale`
+  - coverage includes node, edge, file, package, and edge-kind counts
+- [x] Added `nucleus trace` and `nucleus impact` MVP:
+  - `trace symbol` resolves stable symbol IDs or unambiguous short names and returns callers/callees over `symbol_graph`
+  - `trace route` returns reachable flow graph nodes and edges for a route query
+  - `trace capability` reads manifest capability anchors and returns callers/callees for resolved symbols
+  - `impact symbol` returns affected symbols, files, tests, and graph edges
+  - `impact file` expands from file declarations to affected symbols/files/tests
+  - `impact contract` returns affected flow graph routes and edges for contract changes
+  - ambiguous short symbol names return candidate symbols instead of guessing
+- [x] Added `nucleus mark`:
+  - supports `mark contract <id> --kind <kind> --path <path>`
+  - supports `mark capability <id> --kind <kind> --symbol <symbol>` without provider/library/driver fields
+  - writes resolved capability symbols as stable `go://...` IDs when found
+  - writes missing symbols as declared intent instead of generating implementation code
+  - fails ambiguous short symbol names with candidates and does not write a partial manifest
+  - supports `mark verify "<command>"` for project-owned verification commands
+  - writes only `nucleus.yaml` and does not modify `go.mod/go.sum`
+- [x] Added anti-capability regression gates:
+  - `mark capability` accepts unknown capability kinds without enum validation
+  - `mark capability` does not write provider/library/driver fields
+  - `mark capability` does not modify `go.mod` or create `go.sum`
+  - `decision validate` accepts unknown provider/library/driver choices as structured evidence
+  - `report --platform` is rejected because platform readiness is no longer a report mode
+- [x] Added plan impact summary over symbol/flow graph facts:
+  - default and executable plan outputs include `impact_summary`
+  - summary covers affected symbols, files, routes, contracts, tests, capabilities, graph edges, and suggested verification commands
+  - symbol impact uses direct `calls`, `tests`, `implements`, `accepts`, and `returns` edges
+  - route impact maps matched task text back to concrete OpenAPI routes and contract files
+  - capability impact can be inferred from manifest capability anchors and matched symbols
+  - missing direct graph matches emit a warning instead of inventing affected code
+- [x] Added local stdio MCP tools for agents:
+  - root command exposes `nucleus mcp --stdio`
+  - supports JSON-RPC `initialize`, `ping`, `tools/list`, and `tools/call` with Content-Length framing
+  - tool results include both MCP text content and `structuredContent`
+  - tools cover service description, edit surfaces, contracts, capabilities, trace, impact, symbol lookup, callers/callees, decision validation, reports, plans, and recipes
+  - recipe tools read project-local `.nucleus/recipes/*.yaml`, `.yml`, `.json`, and built-in read-only recipes as strict knowledge; unknown executable fields fail validation
+  - MCP does not write files, execute verification commands, access the network, choose providers, or scaffold implementation code
+- [x] Fed safe recipe matches into `plan` as candidate suggestions:
+  - moved strict recipe parsing into shared `cmd/nucleus/internal/recipe`
+  - `plan` now emits `context.recipe_candidates`, `context.recipe_diagnostics`, and `context.recipe_policy`
+  - candidates are selected only by kind/task/detect matches and carry `selection: candidate_only`
+  - recipe suggestions do not modify `commands`, `generated_outputs`, provider decisions, `go.mod/go.sum`, or accepted/locked decision state
+  - invalid recipes are ignored as candidates, surfaced in `recipe_diagnostics`, and add a plan risk
+- [x] Added built-in read-only recipe loading with project override precedence:
+  - built-in recipes are embedded as data-only YAML under `cmd/nucleus/internal/recipe/builtin`
+  - project-local recipes with the same id override built-in recipes
+  - recipe summaries and candidates include `source: project|builtin`
+  - the initial built-in recipe is provider-neutral (`sql-port-boundary`) and does not encode ORM, driver, DSN, dependency, command, or file-write defaults
+  - plan candidates remain `candidate_only` and still require decision evidence before provider/library/driver implementation
+- [x] Removed the legacy platform report schema split:
+  - `nucleus report` now emits `schema_ref: contract/schema/report.v1.schema.json`
+  - deleted the legacy platform report schema file that still described `platform_readiness`, upload payloads, and release dry-runs
+  - `contract/schema/report_schema_test.go` now asserts that local quality report schema has only `ai_quality` mode and no platform/control-plane defs
+- [x] Aligned `verify` with manifest-declared verification:
+  - `verify` now runs protocol validation, strict lint, decision quality validation, and generated freshness before project checks
+  - project checks come only from `nucleus.yaml` `verify.commands`; no implicit `go mod tidy`, `go list`, `go test -run ^$`, or `go test ./...` steps are added
+  - declared project commands are emitted as `verify_command` evidence steps with sanitized output and a bounded timeout
+  - tests cover declared command execution and the absence of implicit tidy/module mutation
+- [x] Unified execution evidence on `contract/schema/evidence.v1.schema.json`:
+  - deleted the legacy split evidence schema file
+  - `verify`, `apply`, `execute`, `repair`, and runnable HTTP `scenario` evidence now emit `result_kind`, `schema_version: evidence.v1`, `schema_ref`, `ok`, `steps`, and `diagnostics`
+  - evidence steps now use `ok` plus schema-valid status values; scenario assertion results keep assertion-local `pass`
+  - `describe.verification` now documents only the protocol verification chain and points project checks to `nucleus.yaml` `verify.commands`
+- [x] Added result schemas for non-evidence CLI JSON outputs:
+  - `describe`, `validate`, `lint`, `gen`, scenario plan/drafts, plan, and executable plan now emit concrete `schema_ref` values backed by schema files
+  - `lint`, scenario plan/drafts, plan, and executable plan now include top-level `diagnostics`
+  - plan `ok` now also fails when top-level diagnostics contain errors
+  - removed the root `--schema` override because agent-facing schema versions must be stable
+- [x] Added explicit locked-decision accept/supersede flow:
+  - `nucleus decision accept <path>` writes `status: accepted`, `locked: true`, `accepted_by`, `accepted_at`, and canonical `decision_hash`
+  - `nucleus decision supersede <path>` resolves `supersedes` from `.nucleus/decisions` and writes `supersedes_hash`
+  - `decision validate` remains read-only
+  - `plan` now emits `blocked_decisions` and `ok: false` when a task attempts provider/library/driver replacement covered by a locked decision without a valid supersede decision
+  - once a valid supersede decision exists, the same provider replacement task is no longer blocked by the locked original decision
+- [x] Tightened report/verify summaries around decision quality, locked decision drift, and recipe candidate usage:
+  - exported a compact `decision.QualitySummary` for CLI/report/verify reuse
+  - `verify` now includes a `decision` evidence step between strict lint and generated freshness
+  - decision diagnostics are merged into verify top-level diagnostics and fail verify when hashes, supersedes hashes, or decision evidence are invalid
+  - `report` now emits `ai_quality.decision_quality`, `ai_quality.recipe_candidate_usage`, and summary counters for decision files, locked decisions, drift, and recipe candidate usage
+  - report schema now describes the current `mode`, `ai_quality`, decision quality, and recipe candidate usage output shape
+- [x] Audited MCP and recipe structured outputs:
+  - added `mcp-result.v1` and `recipe-result.v1` schema files
+  - `get_service_description` now reuses the canonical `describe-result.v1` output
+  - `get_edit_surfaces`, `get_contracts`, `get_capabilities`, `find_symbol`, `list_callers`, and `list_callees` now emit `mcp-result.v1`
+  - `list_recipes`, `get_recipe`, and recipe candidates now emit `recipe-result.v1`
+  - MCP tests assert agent-facing envelope fields on the common structuredContent tools
+- [x] Removed the legacy `migrate` command:
+  - deleted `cmd/nucleus/internal/migrate`
+  - removed root command wiring and root migrate example tests
+  - deleted the migrate concept doc and migrate schema
+  - migration/compatibility planning is out of scope while the project is pre-release
+- [x] Added result schemas for remaining agent-facing CLI outputs:
+  - `decision validate`, `decision accept`, and `decision supersede` now emit `decision-result.v1`
+  - `trace` now emits `trace-result.v1` instead of pointing at graph data schema
+  - `impact` now emits `impact-result.v1` instead of pointing at graph data schema
+  - `serve` now emits `serve-result.v1`
+- [x] Cleaned final documentation and inspect leftovers:
+  - renamed `docs/concepts/ai-first-microservice-kernel.md` to `docs/concepts/agent-native-protocol-layer.md`
+  - updated the concept page from kernel language to protocol-layer language
+  - removed the old `github.com/nucleuskit/cap/httpclient` flow-graph special case
+  - removed unused capability graph provider/module fields and stale inspect constants
+- [x] Removed `bridge` from the core workspace boundary:
+  - deleted the `bridge` submodule from `.gitmodules` and the worktree
+  - removed bridge-specific lint/import rules
+  - removed `bridge` as a capability planning keyword
+  - `git submodule status` no longer lists `bridge`
+
+### In Progress
+
+- [ ] Audit the remaining redesign completion criteria against the current worktree and close any gaps in docs, tests, or CLI behavior.
+
+### Next Tasks
+
+- [ ] Audit README, agent skill docs, and examples against the final redesign acceptance criteria.
+
+## Verification Notes
+
+- `rtk node -e ... schema/*.schema.json` in `contract`: passed earlier in this implementation slice.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in `contract`: passed.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/plan`: passed.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/plan ./cmd/nucleus/internal/describe ./cmd/nucleus/internal/root`: passed before `capcatalog` deletion.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/capvocab ./cmd/nucleus/internal/plan ./cmd/nucleus/internal/root`: passed after replacing `capcatalog`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/scenario`: passed when run outside the sandbox because `httptest` needs to bind a local port.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus describe --dir . --json --pretty`: passed and now returns inferred service facts plus `manifest.missing` warning when no `nucleus.yaml` exists.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus plan --dir . --task "add mysql capability" --json --pretty`: passed and emits decision-only capability context with no provider hint, no provider scaffold command, and no default `go.mod/go.sum` writes.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in `contract`: passed.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --help`: passed and lists `adopt`; it no longer lists `init` or `capability`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus plan --dir . --task "move capability kind suggestions from Go catalog to vocab data" --json --pretty`: passed and no longer false-matches `log` from `catalog`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus plan --dir . --task "接入消息队列并增加指标" --json --pretty`: passed and matches `mq` plus `metric` from vocabulary aliases.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after manifest v2 runtime rewrite.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after manifest v2 runtime rewrite.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus plan --dir . --task "接入消息队列并增加指标" --json --pretty`: passed after manifest v2 runtime rewrite; requested capabilities still come from data vocabulary and remain decision-only.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/decision ./cmd/nucleus/internal/root ./cmd/nucleus/internal/plan`: passed after adding `decision validate`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --help`: passed and lists `decision`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --dir "$tmp" decision validate --json --pretty`: passed against a temporary adopted project with `.nucleus/decisions/order-store.yaml`.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./inspect`: passed after adding symbol graph tests.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --dir "$tmp" describe --json`: passed against a temporary Go module and emitted `symbol_graph` with direct `calls` and inferred `implements` edges.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/root ./cmd/nucleus/internal/trace ./cmd/nucleus/internal/impact ./cmd/nucleus/internal/plan`: passed after adding trace and impact.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --dir "$tmp" trace symbol CreateOrder --json --pretty`: passed against a temporary Go module and returned callers/callees with direct call edges.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --dir "$tmp" impact symbol CreateOrder --json --pretty`: passed against a temporary Go module and returned affected symbols, files, tests, and graph edges.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --help`: passed and lists `trace` plus `impact`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after the trace/impact implementation and documentation sync.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after the trace/impact implementation and documentation sync.
+- `rtk node -e ... schema/*.schema.json`: passed after the trace/impact implementation and documentation sync.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/mark ./cmd/nucleus/internal/root`: passed after adding `mark`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --dir "$tmp" mark contract http --kind openapi --path api/openapi.yaml --json --pretty`: passed against a temporary Go module and wrote only a manifest contract declaration.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --dir "$tmp" mark capability order_store --kind relational_store --symbol OrderStore --json --pretty`: passed against a temporary Go module and wrote a resolved stable symbol ID.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --dir "$tmp" mark verify "go test ./..." --json --pretty`: passed against a temporary Go module and appended a project-owned verification command.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --help`: passed and lists `mark`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/mark ./cmd/nucleus/internal/decision ./cmd/nucleus/internal/report ./cmd/nucleus/internal/plan ./cmd/nucleus/internal/root`: passed after adding anti-capability regression gates.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/trace ./cmd/nucleus/internal/root`: passed after adding `trace capability`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --dir "$tmp" trace capability order_flow --json --pretty`: passed after `mark capability` wrote a resolved anchor and returned callers/callees.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after adding `mark`, anti-capability gates, and `trace capability`.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after adding `mark`, anti-capability gates, and `trace capability`.
+- `rtk node -e ... schema/*.schema.json`: passed after adding `mark-result.v1.schema.json`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/plan`: passed after adding plan `impact_summary`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --dir "$tmp" plan --task "add order status filter to ListOrders" --json --pretty`: passed against a temporary Go module and returned affected symbol, route, test, capability, contract, and graph edge facts.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --dir "$tmp" plan --task "change ListOrders" --json --executable --pretty`: passed and retained `impact_summary` in executable plan output.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after adding plan `impact_summary`.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after adding plan `impact_summary`.
+- `rtk node -e ... schema/*.schema.json`: passed after adding plan `impact_summary`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/mcp ./cmd/nucleus/internal/root ./cmd/nucleus/internal/trace ./cmd/nucleus/internal/impact ./cmd/nucleus/internal/decision ./cmd/nucleus/internal/report`: passed after adding MCP tools.
+- `rtk node -e ... go run ./cmd/nucleus --dir . mcp --stdio`: passed and returned 19 MCP tools, including `build_plan`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after MCP and documentation sync.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after MCP and documentation sync.
+- `rtk node -e ... schema/*.schema.json`: passed after MCP and documentation sync.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/recipe ./cmd/nucleus/internal/plan ./cmd/nucleus/internal/mcp`: passed after plan recipe candidates.
+- `rtk sh -c ... go run ./cmd/nucleus --dir "$tmp" plan --task "add mysql capability" --json --pretty`: passed with one safe `gorm-sql` candidate, one unsafe recipe diagnostic, and no recipe command leakage.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/repair`: passed after making the repair fixture's runtime module replaces tidy-stable and local-only.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after plan recipe candidates and repair fixture cleanup.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after plan recipe candidates.
+- `rtk node -e ... schema/*.schema.json`: passed after plan recipe candidates.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/decision ./cmd/nucleus/internal/plan ./cmd/nucleus/internal/root`: passed after adding `decision accept`, `decision supersede`, and plan `blocked_decisions`.
+- `rtk sh -c ... decision accept ... plan ... decision supersede ... plan`: passed against a temporary service; locked provider replacement was blocked before supersede and unblocked after `supersedes_hash` was written.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after locked decision flow and submodule status check.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after locked decision flow and submodule status check.
+- `rtk node -e ... schema/*.schema.json`: passed after locked decision flow.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/decision ./cmd/nucleus/internal/verify ./cmd/nucleus/internal/report`: passed after decision quality and recipe candidate report summaries.
+- `rtk node -e ... contract/schema/report.v1.schema.json contract/schema/evidence.v1.schema.json`: passed after report schema sync.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after decision quality/report/verify summary sync.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after decision quality/report/verify summary sync.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus report --dir . --json --pretty`: passed and emitted decision quality plus recipe candidate usage. It reports the default missing AI task directory as a warning.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus verify --dir . --json --pretty`: failed as expected for the repository root because there is no root `nucleus.yaml`; the JSON stopped at the existing validate step before decision validation.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/recipe ./cmd/nucleus/internal/plan ./cmd/nucleus/internal/mcp`: passed after built-in recipe loading and project override precedence.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus plan --dir . --task "add mysql capability" --json --pretty`: passed and emitted one provider-neutral built-in `sql-port-boundary` candidate with `source: builtin`; commands and generated outputs did not include recipe suggestions.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after built-in recipe loading.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after built-in recipe loading.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus verify --dir . --json --pretty`: failed as expected for the repository root because there is no root `nucleus.yaml`; the JSON stopped at `validate` with `manifest.read_failed`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/report ./cmd/nucleus/internal/root`: passed after switching report CLI to `report.v1.schema.json`.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./schema`: passed after deleting the old platform report schema.
+- `rtk node -e ... contract/schema/report.v1.schema.json`: passed after report schema cleanup.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus report --dir . --json --pretty`: passed and emitted `schema_ref: contract/schema/report.v1.schema.json`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after report schema cleanup.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after report schema cleanup.
+- `rtk node -e ... report.v1/recipe.v1/evidence.v1 schemas`: passed after report schema cleanup.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/verify ./cmd/nucleus/internal/root`: passed after manifest-declared verify command execution.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...` in the root module: passed after manifest-declared verify command execution.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...` in `contract`: passed after manifest-declared verify command execution.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus verify --dir . --json --pretty`: failed as expected for the repository root because there is no root `nucleus.yaml`; the JSON stopped at `validate` with `manifest.read_failed`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/verify ./cmd/nucleus/internal/describe ./cmd/nucleus/internal/apply ./cmd/nucleus/internal/execute ./cmd/nucleus/internal/scenario ./cmd/nucleus/internal/repair ./cmd/nucleus/internal/report ./cmd/nucleus/internal/plan ./cmd/nucleus/internal/root`: passed after unifying evidence on `evidence.v1`.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./schema`: passed after deleting the legacy split evidence schema.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...`: passed after evidence schema cleanup.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...`: passed after evidence schema cleanup.
+- `rtk node -e 'const fs=require("fs"); for (const f of fs.readdirSync("schema").filter(f=>f.endsWith(".schema.json"))) JSON.parse(fs.readFileSync("schema/"+f,"utf8")); console.log("schema json ok")'` in `contract`: passed after evidence schema cleanup.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/validate ./cmd/nucleus/internal/lint ./cmd/nucleus/internal/gen ./cmd/nucleus/internal/scenario ./cmd/nucleus/internal/plan ./cmd/nucleus/internal/root`: passed after adding non-evidence CLI result schemas.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./schema`: passed after adding non-evidence CLI result schemas.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...`: passed after non-evidence CLI result schema cleanup.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...`: passed after non-evidence CLI result schema cleanup.
+- `rtk node -e ... schema/*.schema.json` in `contract`: passed after non-evidence CLI result schema cleanup.
+- `rtk rg -n -- "--schema|SchemaOverride|defaultSchemaVersion|schemaVersion\\(" cmd docs README.md examples`: passed; only the sync note about removing the root `--schema` override remains.
+- `rtk node -e ... schema_ref existence scan`: passed with zero missing schema files for code/docs string references.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus --help`: passed and no longer lists the removed root `--schema` override.
+- `rtk node -e ... describe/validate/plan/verify envelope sample`: passed against the repository root. `describe` emitted `nucleus.describe_result`, `describe-result.v1`, `contract/schema/describe-result.v1.schema.json`, `ok: true`, and a `manifest.missing` warning. `validate` emitted `nucleus.validate_result`, `validate-result.v1`, `contract/schema/validate-result.v1.schema.json`, and failed as expected with `manifest.read_failed`. `plan` emitted `nucleus.plan_result`, `plan-result.v1`, `contract/schema/plan-result.v1.schema.json`, `recipe_candidates`, and `impact_summary`, but `ok: false` because the root is not adopted and decision validation reports `decision.manifest_read_failed`. `verify` emitted `nucleus.verify_result`, `evidence.v1`, `contract/schema/evidence.v1.schema.json`, and failed as expected with a single `validate` step.
+- `rtk node -e ... temporary adopted project envelope sample`: passed. `adopt` emitted `nucleus.adopt_result`, `adopt-result.v1`, `contract/schema/adopt-result.v1.schema.json`, `ok: true`; `plan` emitted `nucleus.plan_result`, `plan-result.v1`, `contract/schema/plan-result.v1.schema.json`, `ok: true`, `recipe_candidates`, and `impact_summary`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus verify --dir . --json --pretty`: failed as expected for the repository root because there is no root `nucleus.yaml`; the JSON now emits `schema_version: evidence.v1`, `schema_ref: contract/schema/evidence.v1.schema.json`, and a failed `validate` step with `kind` plus `ok: false`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/mcp ./cmd/nucleus/internal/recipe ./cmd/nucleus/internal/describe ./cmd/nucleus/internal/plan`: passed after MCP and recipe result envelope sync.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./schema`: passed after adding `mcp-result.v1` and `recipe-result.v1`.
+- `rtk node -e ... schema/*.schema.json`: passed after adding `mcp-result.v1` and `recipe-result.v1`.
+- `rtk node -e ... go run ./cmd/nucleus --dir . mcp --stdio`: passed a real `tools/call` frame for `get_edit_surfaces`; `structuredContent` emitted `nucleus.mcp.edit_surfaces_result`, `mcp-result.v1`, `contract/schema/mcp-result.v1.schema.json`, `ok: true`, and one root no-manifest warning diagnostic.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...`: passed after MCP/recipe envelope sync.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...`: passed after MCP/recipe envelope sync.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go run ./cmd/nucleus verify --dir . --json --pretty`: failed as expected for the repository root because there is no root `nucleus.yaml`; output remains structured `evidence.v1` with failed `validate`.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/decision ./cmd/nucleus/internal/trace ./cmd/nucleus/internal/impact ./cmd/nucleus/internal/serve ./cmd/nucleus/internal/root`: passed after deleting `migrate` and adding decision/trace/impact/serve result schemas.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./schema`: passed after deleting migrate schema and adding decision/trace/impact/serve result schemas.
+- `rtk node -e ... decision/trace/impact/serve real CLI sample`: passed against a temporary service. `decision validate` emitted `decision-result.v1`, `trace symbol` emitted `trace-result.v1`, `impact symbol` emitted `impact-result.v1`, `serve --check` emitted `serve-result.v1`, and root `--help` no longer contained `migrate`.
+- `rtk node -e ... schema_ref existence scan`: passed with zero missing schema files after deleting old migrate/serve schemas.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...`: passed after deleting `migrate` and adding remaining result schemas.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...`: passed after deleting `migrate` and adding remaining result schemas.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./inspect ./lint ./schema`: passed after removing inspect provider/module/httpclient leftovers.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/describe ./cmd/nucleus/internal/trace ./cmd/nucleus/internal/impact ./cmd/nucleus/internal/plan`: passed after removing inspect provider/module/httpclient leftovers.
+- `rtk rg -n ... old schema and command residue`: passed; remaining `migrate` and old concept-file-name hits are deletion/rename records only.
+- `rtk node -e ... schema_ref existence scan`: passed with zero missing schema files after final docs cleanup.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...`: passed after final docs and inspect cleanup.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...`: passed after final docs and inspect cleanup.
+- `rtk node -e ... schema/*.schema.json`: passed after final docs and inspect cleanup.
+- `rtk git submodule status`: passed after deleting the `bridge` submodule mapping and gitlink; remaining submodules are `cap`, `contract`, `core`, and `runtime/*`.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./lint ./inspect ./schema`: passed after removing bridge lint/import special cases.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./cmd/nucleus/internal/plan ./cmd/nucleus/internal/root`: passed after removing `bridge` as a planning keyword.
+- `rtk rg -n ... bridge residue`: passed; the only remaining bridge hit is the redesign document's historical removal requirement.
+- `rtk node -e ... schema_ref existence scan`: passed with zero missing schema files after bridge removal.
+- `rtk env GOCACHE=/private/tmp/nucleus-gocache go test ./...`: passed after bridge removal.
+- `rtk env GOCACHE=/private/tmp/nucleus-contract-gocache go test ./...`: passed after bridge removal.
+- `rtk node -e ... schema/*.schema.json`: passed after bridge removal.
+
+## Completion Criteria
+
+- README, ADRs, schemas, CLI, lint, report, and tests all reflect the agent-native protocol-layer boundary.
+- `adopt -> mark -> describe graph -> trace -> impact -> plan -> decision -> verify` works for a no-contract Go project without generating business code or modifying `go.mod/go.sum`.
+- Provider/library/driver decisions are accepted only through decision evidence, never through `nucleus.yaml`.
+- No scaffold, provider bridge, or platform-readiness paths remain in the core boundary.

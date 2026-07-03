@@ -24,3 +24,15 @@ const (
 	jsonIndentPrefix = ""
 	jsonIndentValue  = "  "
 )
+
+const (
+	resultKindRepairEvidence = "nucleus.repair_evidence"
+	schemaVersionEvidence    = "evidence.v1"
+	schemaRefEvidence        = "contract/schema/evidence.v1.schema.json"
+)
+
+const (
+	statusPassed  = "passed"
+	statusFailed  = "failed"
+	statusBlocked = "blocked"
+)

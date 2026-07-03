@@ -8,8 +8,7 @@ import (
 
 // Config carries root-level flag values used by the describe command.
 type Config struct {
-	Dir            *string
-	SchemaOverride *string
+	Dir *string
 }
 
 type options struct {
@@ -45,9 +44,8 @@ func NewCommand(config Config) *cobra.Command {
 // buildOptions builds an OutputOptions struct from the root command's flag values.
 func buildOptions(config Config, opts *options) OutputOptions {
 	return OutputOptions{
-		Dir:            stringValue(config.Dir, defaultDir),
-		SchemaOverride: stringValue(config.SchemaOverride, ""),
-		IncludeFlow:    opts.flow,
+		Dir:         stringValue(config.Dir, defaultDir),
+		IncludeFlow: opts.flow,
 	}
 }
 

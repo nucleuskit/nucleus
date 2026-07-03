@@ -27,7 +27,8 @@ func TestReportCommandEmitsAIQualityJSON(t *testing.T) {
   "kind": "nucleus.evidence_replay",
   "labels": ["single_service", "repairable"],
   "evidence": {
-    "kind": "nucleus.repair_evidence",
+    "result_kind": "nucleus.repair_evidence",
+    "ok": true,
     "status": "repaired",
     "verification_pass": true,
     "rounds": [
@@ -162,55 +163,8 @@ func TestReportCommandExplicitMissingAITasksDirFailsWithJSONDiagnostics(t *testi
 	assertReportContainsDiagnostic(t, diagnostics, "report.ai_tasks_read_failed")
 }
 
-func TestReportCommandEmitsPlatformReadinessJSON(t *testing.T) {
+func TestReportCommandRejectsRemovedPlatformFlag(t *testing.T) {
 	serviceDir := t.TempDir()
-	writeReportService(t, serviceDir)
-	writeReportFile(t, serviceDir, "cmd/demo/main.go", `package main
-
-import (
-	_ "github.com/nucleuskit/bridge/zap"
-	_ "github.com/nucleuskit/cap/log"
-)
-
-func main() {}
-`)
-
-	dir := serviceDir
-	cmd := NewCommand(Config{Dir: &dir})
-	var stdout bytes.Buffer
-	cmd.SetOut(&stdout)
-	cmd.SetErr(&bytes.Buffer{})
-	cmd.SetArgs([]string{"--platform", "--json"})
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("execute report: %v", err)
-	}
-
-	var output map[string]any
-	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
-		t.Fatalf("decode report output: %v\n%s", err, stdout.String())
-	}
-	assertReportString(t, output, "mode", reportModePlatformReadiness)
-	assertReportBool(t, output, "ok", true)
-	platform := assertReportMap(t, output, "platform_readiness")
-	assertReportString(t, platform, "service", "demo")
-	providerStrategies := assertReportSlice(t, platform, "provider_strategy")
-	if len(providerStrategies) != 1 {
-		t.Fatalf("provider_strategy len = %d, want 1: %#v", len(providerStrategies), providerStrategies)
-	}
-	strategy, ok := providerStrategies[0].(map[string]any)
-	if !ok {
-		t.Fatalf("provider_strategy[0] has type %T", providerStrategies[0])
-	}
-	assertReportString(t, strategy, "capability", "log")
-	assertReportString(t, strategy, "provider", "zap")
-	assertReportString(t, strategy, "sdk_status", "optional_external_provider_detected")
-	gates := assertReportSlice(t, platform, "readiness_gates")
-	assertReportContainsGate(t, gates, "generated_freshness", false)
-}
-
-func TestReportCommandRedactsAbsolutePlatformInspectErrors(t *testing.T) {
-	serviceDir := filepath.Join(t.TempDir(), "missing-service")
 	dir := serviceDir
 	cmd := NewCommand(Config{Dir: &dir})
 	var stdout bytes.Buffer
@@ -220,56 +174,14 @@ func TestReportCommandRedactsAbsolutePlatformInspectErrors(t *testing.T) {
 
 	err := cmd.Execute()
 	if err == nil {
-		t.Fatal("execute report succeeded, want inspect failure")
+		t.Fatal("execute report succeeded, want unknown platform flag failure")
 	}
-	var output map[string]any
-	if decodeErr := json.Unmarshal(stdout.Bytes(), &output); decodeErr != nil {
-		t.Fatalf("decode report output: %v\n%s", decodeErr, stdout.String())
+	if !strings.Contains(err.Error(), "unknown flag: --platform") {
+		t.Fatalf("error = %v, want unknown platform flag", err)
 	}
-	diagnostics := assertReportSlice(t, output, "diagnostics")
-	assertReportContainsDiagnostic(t, diagnostics, reportDiagnosticInspectFailed)
-	for _, raw := range diagnostics {
-		item, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
-		for _, key := range []string{"path", "message"} {
-			text, _ := item[key].(string)
-			if strings.Contains(text, serviceDir) {
-				t.Fatalf("diagnostic %s leaked absolute path %q in %#v", key, serviceDir, item)
-			}
-		}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty output for rejected platform flag", stdout.String())
 	}
-}
-
-func TestReportCommandRejectsConflictingInputModes(t *testing.T) {
-	serviceDir := t.TempDir()
-	dir := serviceDir
-	cmd := NewCommand(Config{Dir: &dir})
-	cmd.SetOut(&bytes.Buffer{})
-	cmd.SetErr(&bytes.Buffer{})
-	cmd.SetArgs([]string{"--platform", "--ai-tasks", filepath.Join(serviceDir, "tasks")})
-
-	err := cmd.Execute()
-	if err == nil || !strings.Contains(err.Error(), "--platform cannot be combined with --ai-tasks") {
-		t.Fatalf("error = %v, want conflicting input mode error", err)
-	}
-}
-
-func writeReportService(t *testing.T, dir string) {
-	t.Helper()
-	writeReportFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
-service:
-  name: demo
-  version: "0.1.0"
-capabilities:
-  - log
-ai:
-  generated:
-    - contract/gen
-`)
-	writeReportFile(t, dir, "api/openapi.yaml", "openapi: 3.0.3\npaths: {}\n")
-	writeReportFile(t, dir, "api/errors.yaml", "errors: []\n")
 }
 
 func writeReportFile(t *testing.T, dir string, name string, data string) {
@@ -343,19 +255,4 @@ func assertReportContainsDiagnostic(t *testing.T, diagnostics []any, code string
 		}
 	}
 	t.Fatalf("no diagnostic %q in %#v", code, diagnostics)
-}
-
-func assertReportContainsGate(t *testing.T, gates []any, id string, pass bool) {
-	t.Helper()
-	for _, value := range gates {
-		item, ok := value.(map[string]any)
-		if !ok || item["id"] != id {
-			continue
-		}
-		if item["pass"] != pass {
-			t.Fatalf("gate %s pass = %#v, want %v", id, item["pass"], pass)
-		}
-		return
-	}
-	t.Fatalf("no gate %q in %#v", id, gates)
 }

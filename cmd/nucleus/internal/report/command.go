@@ -14,7 +14,6 @@ type Config struct {
 
 type options struct {
 	aiTasksPath string
-	platform    bool
 	json        bool
 	pretty      bool
 }
@@ -50,7 +49,6 @@ func NewCommand(config Config) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&opts.aiTasksPath, flagAITasks, "", flagHelpAITasks)
-	cmd.Flags().BoolVar(&opts.platform, flagPlatform, false, flagHelpPlatform)
 	cmd.Flags().BoolVar(&opts.json, flagJSON, false, flagHelpJSON)
 	cmd.Flags().BoolVar(&opts.pretty, flagPretty, false, flagHelpPretty)
 	return cmd

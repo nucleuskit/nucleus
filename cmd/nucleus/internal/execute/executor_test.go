@@ -42,7 +42,7 @@ func TestExecutePlanCommandsAllowsCommandSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExecutePlanCommands returned error: %v", err)
 	}
-	if evidence["kind"] != "nucleus.executor_evidence" || evidence["pass"] != true || evidence["status"] != "passed" {
+	if evidence["result_kind"] != resultKindExecutorEvidence || evidence["schema_ref"] != schemaRefEvidence || evidence["ok"] != true || evidence["status"] != "passed" {
 		t.Fatalf("unexpected passing evidence: %#v", evidence)
 	}
 	steps := evidence["steps"].([]map[string]any)
@@ -72,11 +72,11 @@ func TestExecutePlanCommandsRejectsCommandOutsideAllowlist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("allowlist rejection should be represented as evidence, got error: %v", err)
 	}
-	if evidence["pass"] != false || evidence["status"] != "failed" {
+	if evidence["ok"] != false || evidence["status"] != "failed" {
 		t.Fatalf("unexpected rejection evidence: %#v", evidence)
 	}
 	steps := evidence["steps"].([]map[string]any)
-	if steps[0]["status"] != "blocked" || steps[0]["exit_code"] != 126 {
+	if steps[0]["ok"] != false || steps[0]["status"] != "blocked" || steps[0]["exit_code"] != 126 {
 		t.Fatalf("non-allowlisted command should be blocked: %#v", steps[0])
 	}
 }
@@ -102,7 +102,7 @@ func TestExecutePlanCommandsRecordsFailureEvidence(t *testing.T) {
 		t.Fatalf("command failure should be represented as evidence, got error: %v", err)
 	}
 	steps := evidence["steps"].([]map[string]any)
-	if evidence["pass"] != false || steps[0]["status"] != "failed" || steps[0]["exit_code"] != 7 {
+	if evidence["ok"] != false || steps[0]["ok"] != false || steps[0]["status"] != "failed" || steps[0]["exit_code"] != 7 {
 		t.Fatalf("unexpected failure evidence: %#v", evidence)
 	}
 }
@@ -128,7 +128,7 @@ func TestExecutePlanCommandsRecordsTimeoutEvidence(t *testing.T) {
 		t.Fatalf("timeout should be represented as evidence, got error: %v", err)
 	}
 	steps := evidence["steps"].([]map[string]any)
-	if evidence["pass"] != false || steps[0]["status"] != "timeout" || steps[0]["exit_code"] != 124 {
+	if evidence["ok"] != false || steps[0]["ok"] != false || steps[0]["status"] != "timeout" || steps[0]["exit_code"] != 124 {
 		t.Fatalf("unexpected timeout evidence: %#v", evidence)
 	}
 }

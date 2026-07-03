@@ -16,7 +16,7 @@ func TestDescribeCommandWithHelloHTTPExample(t *testing.T) {
 	var stdout bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&bytes.Buffer{})
-	cmd.SetArgs([]string{"--dir", exampleDir, "--schema", "9.9", "describe", "--json", "--flow"})
+	cmd.SetArgs([]string{"--dir", exampleDir, "describe", "--json", "--flow"})
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("execute describe: %v", err)
@@ -27,7 +27,9 @@ func TestDescribeCommandWithHelloHTTPExample(t *testing.T) {
 		t.Fatalf("decode describe output: %v\n%s", err, stdout.String())
 	}
 
-	assertString(t, output, "schema_version", "9.9")
+	assertString(t, output, "result_kind", "nucleus.describe_result")
+	assertString(t, output, "schema_version", "describe-result.v1")
+	assertString(t, output, "schema_ref", "contract/schema/describe-result.v1.schema.json")
 	service := assertMap(t, output, "service")
 	assertString(t, service, "name", "hello-http")
 

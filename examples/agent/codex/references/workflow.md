@@ -1,20 +1,18 @@
 # Nucleus Workflow Reference
 
-## Empty Repository
+## Empty Or Existing Repository
 
-Use CLI bootstrap only:
+Use Nucleus adoption only after the user project exists:
 
 ```bash
-nucleus init --name <service-name> --module <module-path> --template service --agent codex --dir .
+nucleus adopt --dir . --agent codex
 ```
 
-Ask for only missing bootstrap inputs:
+Ask for only missing adoption inputs:
 
 - service name
-- Go module path
-- template type: `service`, `worker`, or `library`
 
-Do not inspect or copy local Nucleus examples, testdata, templates, or source checkouts to derive business code.
+If the directory has no Go module or business code yet, ask the user how they want to initialize their own project. Do not use Nucleus examples, testdata, templates, or source checkouts to derive business code.
 
 ## Existing Service
 
@@ -36,7 +34,7 @@ Use `describe` to determine current facts:
 - generated freshness
 - verification commands
 
-Use `plan --executable` to determine the candidate write set. Treat `blocked_edits[]` as a hard stop unless the user explicitly changes the service edit boundaries. Do not continue by adding provider imports or wiring outside the manifest path.
+Use `plan --executable` to determine the candidate write set. Treat `blocked_edits[]` as a hard stop unless the user explicitly changes the service edit boundaries. Do not continue by adding provider imports or wiring outside the allowed edit surface.
 
 ## HTTP Or gRPC Behavior Change
 
@@ -55,14 +53,13 @@ Do not hand-write routes that drift from OpenAPI. Do not invent error codes outs
 
 Apply manifest edits before code:
 
-1. Update `nucleus.yaml` capability declarations, dependencies, providers, or edit boundaries.
-2. If MCP is available, call `get_capability_recipe` and use its `scaffold_command` or provider-specific `bridge_candidates[].scaffold_command`.
-3. Prefer a scaffold command when available, for example `nucleus capability add sql --provider postgres --dir .`.
-4. Add or adjust app wiring in the service assembly layer.
-5. Keep `domain` independent of provider SDKs and transport frameworks.
-6. Verify manifest/import consistency with `nucleus lint --dir . --strict`.
+1. Update `nucleus.yaml` capability declarations, dependencies, or edit boundaries.
+2. Record provider, library, ORM, driver, SDK, and wiring choices as structured decision evidence under `.nucleus/decisions`.
+3. Add or adjust user-project interfaces and implementation wiring inside allowed edit surfaces.
+4. Keep domain code independent of provider SDKs and transport frameworks unless the project already owns that boundary.
+5. Verify manifest, contract, and import consistency with `nucleus lint --dir . --strict`.
 
-SQL providers such as PostgreSQL and MySQL belong to `cap/sql`. MongoDB is a separate document-store capability and must not be modeled as SQL.
+Do not write provider, library, driver, or ORM decisions into `nucleus.yaml`. Those are decisions, not protocol index fields.
 
 ## Fix Or Repair
 

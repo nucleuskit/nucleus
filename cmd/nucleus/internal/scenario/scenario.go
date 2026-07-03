@@ -71,7 +71,9 @@ func BuildScenarioPlan(dir string) (map[string]any, error) {
 		"ok":             true,
 		"kind":           planKind,
 		"schema_version": scenarioSchemaVersion,
+		"schema_ref":     scenarioSchemaRef,
 		"summary":        scenarioSummary(scenarios),
+		"diagnostics":    []map[string]any{},
 		"source": map[string]any{
 			"openapi":    "api/openapi.yaml",
 			"errors":     "api/errors.yaml",
@@ -115,10 +117,12 @@ func buildHTTPCaseDraftOutput(dir string) (map[string]any, error) {
 		"ok":             true,
 		"kind":           httpCaseDraftsKind,
 		"schema_version": scenarioSchemaVersion,
+		"schema_ref":     scenarioSchemaRef,
 		"summary": map[string]any{
 			"cases": len(cases),
 		},
-		"cases": cases,
+		"diagnostics": []map[string]any{},
+		"cases":       cases,
 	}, nil
 }
 

@@ -40,8 +40,8 @@ Human output is the default. `--json` emits a stable CLI result envelope:
 ```json
 {
   "result_kind": "nucleus.serve_result",
-  "schema_version": "serve.v1",
-  "schema_ref": "contract/schema/serve.schema.json",
+  "schema_version": "serve-result.v1",
+  "schema_ref": "contract/schema/serve-result.v1.schema.json",
   "ok": true,
   "mode": "check",
   "summary": {

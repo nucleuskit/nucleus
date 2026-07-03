@@ -59,7 +59,7 @@ func isEvidence(result any) bool {
 	if !ok {
 		return false
 	}
-	kind, _ := evidence["kind"].(string)
+	kind, _ := evidence["result_kind"].(string)
 	return kind == httpEvidenceKind
 }
 
@@ -68,8 +68,8 @@ func evidencePass(result any) bool {
 	if !ok {
 		return true
 	}
-	pass, ok := evidence["pass"].(bool)
-	return !ok || pass
+	okField, ok := evidence["ok"].(bool)
+	return !ok || okField
 }
 
 func valueLen(value any) int {

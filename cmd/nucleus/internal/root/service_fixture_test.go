@@ -9,18 +9,18 @@ import (
 func writeRootExampleService(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	writeRootFixtureFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeRootFixtureFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: hello-http
   version: "0.1.0"
-  env: test
   owner: nucleus-maintainers
   tier: example
-  namespace: examples
   description: Contract-first HTTP service used by root command tests.
 capabilities:
-  - http
-  - log
+  - id: http
+    kind: http
+  - id: log
+    kind: log
 dependencies:
   - name: greeting-profile
     contract: api/openapi.yaml#/paths/~1hello~1{name}
@@ -38,10 +38,6 @@ ai:
     - internal/adapter/http/gen
   forbidden:
     - configs/*.local.yaml
-nucleus:
-  providers:
-    log:
-      provider: noop
 `)
 	writeRootFixtureFile(t, dir, "api/openapi.yaml", `openapi: 3.1.0
 info:

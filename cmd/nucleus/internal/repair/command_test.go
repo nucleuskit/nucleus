@@ -12,13 +12,14 @@ func TestCommandJSONManualActionReturnsSentinel(t *testing.T) {
 	dir := t.TempDir()
 	evidencePath := filepath.Join(dir, "evidence.json")
 	writeFile(t, dir, "evidence.json", `{
-  "kind": "nucleus.apply_evidence",
-  "pass": false,
+  "result_kind": "nucleus.apply_evidence",
+  "ok": false,
   "steps": [
     {
       "id": "custom_failure",
       "kind": "custom_failure",
-      "pass": false
+      "status": "failed",
+      "ok": false
     }
   ]
 }`)
@@ -39,14 +40,14 @@ func TestCommandJSONManualActionReturnsSentinel(t *testing.T) {
 	}
 
 	var output struct {
-		Kind   string `json:"kind"`
-		Pass   bool   `json:"pass"`
-		Status string `json:"status"`
+		ResultKind string `json:"result_kind"`
+		OK         bool   `json:"ok"`
+		Status     string `json:"status"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("decode JSON: %v\n%s", err, stdout.String())
 	}
-	if output.Kind != "nucleus.repair_evidence" || output.Pass || output.Status != "needs_manual_action" {
+	if output.ResultKind != resultKindRepairEvidence || output.OK || output.Status != "needs_manual_action" {
 		t.Fatalf("unexpected repair evidence: %#v", output)
 	}
 }

@@ -34,22 +34,15 @@ func BuildEvidence(dir string, planPath string) (map[string]any, error) {
 			"kind":        "edit_surface_check",
 			"path":        path,
 			"surface":     surface,
-			"pass":        allowed,
+			"status":      stepStatus(allowed),
+			"ok":          allowed,
 			"exit_code":   boolExitCode(allowed),
 			"needs_write": false,
 		})
 	}
-	return map[string]any{
-		"schema_version": "evidence.v1",
-		"kind":           "nucleus.apply_evidence",
-		"mode":           "dry-run",
-		"pass":           pass,
-		"steps":          steps,
-		"diffs":          []string{},
-		"rollback_points": []map[string]any{
-			{"id": "dry-run", "strategy": "no writes performed", "available": true},
-		},
-	}, nil
+	return applyEvidence("dry-run", pass, steps, []map[string]any{
+		{"id": "dry-run", "strategy": "no writes performed", "available": true},
+	}), nil
 }
 
 func Apply(dir string, planPath string) (map[string]any, error) {
@@ -80,7 +73,8 @@ func Apply(dir string, planPath string) (map[string]any, error) {
 			"kind":        "edit_surface_check",
 			"path":        path,
 			"surface":     surface,
-			"pass":        allowed,
+			"status":      stepStatus(allowed),
+			"ok":          allowed,
 			"exit_code":   boolExitCode(allowed),
 			"needs_write": true,
 		})
@@ -99,7 +93,8 @@ func Apply(dir string, planPath string) (map[string]any, error) {
 				"id":        fmt.Sprintf("apply-write-%d", index+1),
 				"kind":      "file_write",
 				"path":      path,
-				"pass":      false,
+				"status":    statusFailed,
+				"ok":        false,
 				"exit_code": 1,
 				"error":     err.Error(),
 			})
@@ -111,7 +106,8 @@ func Apply(dir string, planPath string) (map[string]any, error) {
 				"id":        fmt.Sprintf("apply-write-%d", index+1),
 				"kind":      "file_write",
 				"path":      path,
-				"pass":      false,
+				"status":    statusFailed,
+				"ok":        false,
 				"exit_code": 1,
 				"error":     err.Error(),
 			})
@@ -124,7 +120,8 @@ func Apply(dir string, planPath string) (map[string]any, error) {
 				"id":        fmt.Sprintf("apply-write-%d", index+1),
 				"kind":      "file_write",
 				"path":      path,
-				"pass":      false,
+				"status":    statusFailed,
+				"ok":        false,
 				"exit_code": 1,
 				"error":     err.Error(),
 			})
@@ -138,7 +135,8 @@ func Apply(dir string, planPath string) (map[string]any, error) {
 				"id":        fmt.Sprintf("apply-write-%d", index+1),
 				"kind":      "file_write",
 				"path":      path,
-				"pass":      false,
+				"status":    statusFailed,
+				"ok":        false,
 				"exit_code": 1,
 				"error":     err.Error(),
 			})
@@ -150,7 +148,8 @@ func Apply(dir string, planPath string) (map[string]any, error) {
 				"id":        fmt.Sprintf("apply-write-%d", index+1),
 				"kind":      "file_write",
 				"path":      path,
-				"pass":      false,
+				"status":    statusFailed,
+				"ok":        false,
 				"exit_code": 1,
 				"error":     err.Error(),
 			})
@@ -161,7 +160,8 @@ func Apply(dir string, planPath string) (map[string]any, error) {
 			"id":        fmt.Sprintf("apply-write-%d", index+1),
 			"kind":      "file_write",
 			"path":      path,
-			"pass":      true,
+			"status":    statusPassed,
+			"ok":        true,
 			"exit_code": 0,
 			"bytes":     len(content),
 		})
@@ -203,7 +203,8 @@ func appendSkippedCommands(steps []map[string]any, commands []map[string]any) []
 			"id":        fmt.Sprintf("command-skipped-%d", index+1),
 			"kind":      "command_skipped",
 			"command":   commandText,
-			"pass":      true,
+			"status":    statusSkipped,
+			"ok":        true,
 			"exit_code": 0,
 			"reason":    "apply does not execute shell commands",
 		})
@@ -213,11 +214,14 @@ func appendSkippedCommands(steps []map[string]any, commands []map[string]any) []
 
 func applyEvidence(mode string, pass bool, steps []map[string]any, rollbackPoints []map[string]any) map[string]any {
 	return map[string]any{
-		"schema_version":  "evidence.v1",
-		"kind":            "nucleus.apply_evidence",
+		"result_kind":     resultKindApplyEvidence,
+		"schema_version":  schemaVersionEvidence,
+		"schema_ref":      schemaRefEvidence,
+		"ok":              pass,
 		"mode":            mode,
-		"pass":            pass,
+		"status":          stepStatus(pass),
 		"steps":           steps,
+		"diagnostics":     []map[string]any{},
 		"diffs":           []string{},
 		"rollback_points": rollbackPoints,
 	}
@@ -345,4 +349,17 @@ func boolExitCode(pass bool) int {
 		return 0
 	}
 	return 1
+}
+
+const (
+	statusPassed  = "passed"
+	statusFailed  = "failed"
+	statusSkipped = "skipped"
+)
+
+func stepStatus(ok bool) string {
+	if ok {
+		return statusPassed
+	}
+	return statusFailed
 }
