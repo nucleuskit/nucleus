@@ -1,4 +1,4 @@
 [submodule "contract"]
 	path = contract
-	url = https://anniext.cn/nucleuskit/contract.git
+	url = https://github.com/nucleuskit/contract.git
 	branch = main
