@@ -142,12 +142,16 @@ contract/inspect/    Source and contract inspection
 docs/                Concepts, ADRs, and plans
 ```
 
-The contract and narrowly scoped runtime packages are published as separate Go modules:
+The root repository keeps only the protocol boundary in-tree. Runtime,
+provider, ORM, transport, and storage implementations are project decisions,
+not framework defaults:
 
 - `github.com/nucleuskit/contract`
-- `github.com/nucleuskit/http`
-- `github.com/nucleuskit/grpc`
-- `github.com/nucleuskit/worker`
+
+Projects can still depend on any router, RPC library, worker runtime, database
+driver, ORM, or provider SDK they choose. Nucleus only records the contract,
+capability anchors, decision evidence, and generated protocol glue needed for
+agents to understand and change the code safely.
 
 ## Roadmap
 

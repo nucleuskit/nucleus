@@ -87,17 +87,18 @@ or become an accepted decision. `plan` exposes safe matches as
 policy. Recipe suggestions do not modify plan commands, generated outputs,
 provider decisions, dependencies, or locked decision state.
 
-## Runtime Modules
+## Runtime Boundary
 
-The runtime modules remain separate Go modules. They should be treated as
-optional user/project dependencies, not as dependencies introduced by `adopt` or
-capability commands.
+The root repository now keeps only the protocol and code-intelligence boundary.
+Runtime modules are not part of the core project shape. HTTP routers, gRPC
+stacks, worker runtimes, ORMs, drivers, and provider SDKs must be selected and
+owned by the user project, then connected to Nucleus through contracts,
+capability anchors, generated protocol glue, and decision evidence.
 
-| Module | Current status | Notes |
-| --- | --- | --- |
-| `github.com/nucleuskit/http` | Existing runtime module | HTTP server, route registration, response envelopes, middleware, clients, CORS, SSE, static assets, and well-known metadata exist outside the protocol CLI. |
-| `github.com/nucleuskit/grpc` | Existing runtime module | gRPC server/client wrappers, discovery resolver support, health/reflection options, and interceptor chains exist outside the protocol CLI. |
-| `github.com/nucleuskit/worker` | Existing runtime module | Worker primitives exist outside the protocol CLI. |
+`adopt`, `mark capability`, `plan`, `verify`, and `mcp` must not add runtime
+dependencies, pick providers, rewrite `go.mod`, or assume a fixed project
+layout. They should expose enough structured facts for an agent or user to make
+the implementation decision explicitly.
 
 ## Adoption Guidance
 

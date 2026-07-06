@@ -1,24 +1,4 @@
-[submodule "cap"]
-	path = cap
-	url = https://anniext.cn/nucleuskit/cap.git
-	branch = main
 [submodule "contract"]
 	path = contract
 	url = https://anniext.cn/nucleuskit/contract.git
-	branch = main
-[submodule "core"]
-	path = core
-	url = https://anniext.cn/nucleuskit/core.git
-	branch = main
-[submodule "runtime/grpc"]
-	path = runtime/grpc
-	url = https://anniext.cn/nucleuskit/grpc.git
-	branch = main
-[submodule "runtime/http"]
-	path = runtime/http
-	url = https://anniext.cn/nucleuskit/http.git
-	branch = main
-[submodule "runtime/worker"]
-	path = runtime/worker
-	url = https://anniext.cn/nucleuskit/worker.git
 	branch = main

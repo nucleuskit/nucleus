@@ -21,7 +21,7 @@ capabilities:
   - id: http
     kind: http
 `)
-	writeFile(t, dir, "go.mod", "module example.com/demo\n\ngo 1.26.3\n\nrequire github.com/nucleuskit/http v0.0.0\n\nrequire (\n\tgithub.com/nucleuskit/cap v0.1.0-alpha.2 // indirect\n\tgithub.com/nucleuskit/core v0.1.0-alpha.2 // indirect\n)\n\n"+localRuntimeReplace(t))
+	writeFile(t, dir, "go.mod", "module example.com/demo\n\ngo 1.26.3\n")
 	writeFile(t, dir, "demo.go", "package demo\n")
 	writeFile(t, dir, "internal/app/routes.go", `package app
 
@@ -369,31 +369,4 @@ func yamlList(values []string) string {
 func sha256Hex(value string) string {
 	sum := sha256.Sum256([]byte(value))
 	return hex.EncodeToString(sum[:])
-}
-
-func runtimeHTTPReplace(t *testing.T) string {
-	t.Helper()
-	path, err := filepath.Abs("../../../../runtime/http")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return filepath.ToSlash(path)
-}
-
-func localRuntimeReplace(t *testing.T) string {
-	t.Helper()
-	return strings.Join([]string{
-		"replace github.com/nucleuskit/http => " + runtimeHTTPReplace(t),
-		"replace github.com/nucleuskit/cap => " + localModulePath(t, "cap"),
-		"replace github.com/nucleuskit/core => " + localModulePath(t, "core"),
-	}, "\n\n") + "\n"
-}
-
-func localModulePath(t *testing.T, rel string) string {
-	t.Helper()
-	path, err := filepath.Abs(filepath.Join("../../../../", rel))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return filepath.ToSlash(path)
 }

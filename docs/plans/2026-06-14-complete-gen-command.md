@@ -40,7 +40,7 @@
 - Test: `contract/gen/export_test.go`
 
 - [ ] Fix all module paths to `github.com/nucleuskit/*`.
-- [ ] Ensure generated HTTP binder imports `github.com/nucleuskit/http`.
+- [x] Obsolete: generated HTTP binders must not import a Nucleus runtime package; they expose project-owned registrar interfaces instead.
 - [ ] Keep reusable rendering/export logic in `contract/gen`; do not duplicate it in CLI root.
 - [ ] Add Go doc for exported APIs.
 - [ ] Ensure client export and optional generated directories can receive freshness markers from the CLI.
