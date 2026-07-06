@@ -16,7 +16,7 @@ import (
 
 const (
 	httpEvidenceKind        = "nucleus.http_scenario_evidence"
-	evidenceSchemaRef       = "contract/schema/evidence.schema.json"
+	evidenceSchemaRef       = "contract/schema/evidence.v1.schema.json"
 	defaultHTTPBodyMaxBytes = 8192
 	defaultHTTPTimeout      = 30 * time.Second
 )
@@ -64,7 +64,7 @@ func RunHTTPScenarios(dir string, options HTTPRunnerOptions) (map[string]any, er
 		shape := shapes[openapi.RequestShapeKey(route.Method, route.Path, route.OperationID)]
 		scenario := successScenarioForRoute(plan, route, shape)
 		step, sample, assertion := runHTTPScenario(runner, route, shape, scenario, index, options.RequestHook, maxBodyBytes)
-		if stepPass, _ := step["pass"].(bool); !stepPass {
+		if stepOK, _ := step["ok"].(bool); !stepOK {
 			pass = false
 		}
 		steps = append(steps, step)
@@ -77,13 +77,14 @@ func RunHTTPScenarios(dir string, options HTTPRunnerOptions) (map[string]any, er
 		status = "failed"
 	}
 	return map[string]any{
+		"result_kind":       httpEvidenceKind,
 		"schema_version":    "evidence.v1",
 		"schema_ref":        evidenceSchemaRef,
-		"kind":              httpEvidenceKind,
-		"pass":              pass,
+		"ok":                pass,
 		"status":            status,
 		"scenario_plan":     plan,
 		"steps":             steps,
+		"diagnostics":       []map[string]any{},
 		"http_samples":      samples,
 		"assertion_results": assertionResults(assertions),
 		"redaction_applied": true,
@@ -163,7 +164,7 @@ func runHTTPScenario(runner httpRunner, route openapi.Route, shape openapi.Reque
 		"path":         route.Path,
 		"operation_id": route.OperationID,
 		"status":       status,
-		"pass":         pass,
+		"ok":           pass,
 		"http_status":  response.StatusCode,
 		"duration_ms":  durationMilliseconds(duration),
 	}
@@ -468,7 +469,7 @@ func failedHTTPBuildStep(id string, route openapi.Route, err error) map[string]a
 		"path":         route.Path,
 		"operation_id": route.OperationID,
 		"status":       "failed",
-		"pass":         false,
+		"ok":           false,
 		"reason":       err.Error(),
 	}
 }

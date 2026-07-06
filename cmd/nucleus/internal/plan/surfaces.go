@@ -19,7 +19,7 @@ func suggestedEdits(taskType string, description inspect.Description, requestedC
 		}
 		edits = append(edits, "api/errors.yaml", "internal/domain/**", "internal/adapter/grpc/**")
 	case taskTypeCapability:
-		edits = append(edits, "nucleus.yaml", "go.mod", "go.sum", "internal/app/**", "internal/config/**", "internal/adapter/store/**", "configs/**", "deploy/**", "docs/**")
+		edits = append(edits, "nucleus.yaml", ".nucleus/decisions/**", "docs/**")
 	case taskTypeErrorCatalog:
 		edits = append(edits, "api/errors.yaml", "internal/domain/**")
 	case taskTypeHTTPEndpoint:
@@ -27,11 +27,8 @@ func suggestedEdits(taskType string, description inspect.Description, requestedC
 	default:
 		edits = append(edits, description.EditSurfaces.Allowed...)
 	}
-	for _, capability := range requestedCapabilities {
-		edits = append(edits, "nucleus.yaml")
-		if capability == "sql" || capability == "mongo" || capability == "redis" || capability == "kv" || capability == "store" {
-			edits = append(edits, "internal/adapter/store/**", "internal/config/**", "configs/**", "deploy/**", "docs/**", "go.mod", "go.sum")
-		}
+	if len(requestedCapabilities) > 0 {
+		edits = append(edits, "nucleus.yaml", ".nucleus/decisions/**", "docs/**")
 	}
 	return filterSuggestedEdits(taskType, uniqueStrings(edits), description.EditSurfaces)
 }
@@ -62,7 +59,7 @@ func implementationSurfaces(taskType string, allowed []string) []string {
 	case taskTypeGRPCService:
 		prefixes = []string{"cmd/", "internal/domain/", "internal/adapter/grpc/", "api/"}
 	case taskTypeCapability:
-		prefixes = []string{"nucleus.yaml", "go.mod", "go.sum", "internal/app/", "internal/config/", "internal/adapter/store/", "configs/", "deploy/", "docs/", "test/", "Makefile"}
+		return allowed
 	case taskTypeErrorCatalog:
 		prefixes = []string{"api/", "internal/domain/", "cmd/"}
 	default:

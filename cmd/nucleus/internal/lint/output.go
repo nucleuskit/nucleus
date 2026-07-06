@@ -6,15 +6,19 @@ import (
 	"io"
 	"strings"
 
+	"github.com/nucleuskit/contract/diagnostic"
 	contractlint "github.com/nucleuskit/contract/lint"
 )
 
 type lintResult struct {
-	ResultKind string                 `json:"result_kind"`
-	OK         bool                   `json:"ok"`
-	Summary    lintSummary            `json:"summary"`
-	Findings   []contractlint.Finding `json:"findings"`
-	Strict     bool                   `json:"strict"`
+	ResultKind    string                 `json:"result_kind"`
+	SchemaVersion string                 `json:"schema_version"`
+	SchemaRef     string                 `json:"schema_ref"`
+	OK            bool                   `json:"ok"`
+	Summary       lintSummary            `json:"summary"`
+	Diagnostics   diagnostic.Diagnostics `json:"diagnostics"`
+	Findings      []contractlint.Finding `json:"findings"`
+	Strict        bool                   `json:"strict"`
 }
 
 func renderHuman(stdout io.Writer, stderr io.Writer, findings []contractlint.Finding, summary lintSummary) {
@@ -46,11 +50,14 @@ func renderJSON(writer io.Writer, findings []contractlint.Finding, summary lintS
 		findings = []contractlint.Finding{}
 	}
 	result := lintResult{
-		ResultKind: resultKindLint,
-		OK:         len(findings) == 0,
-		Summary:    summary,
-		Findings:   findings,
-		Strict:     strict,
+		ResultKind:    resultKindLint,
+		SchemaVersion: schemaVersionLint,
+		SchemaRef:     schemaRefLint,
+		OK:            len(findings) == 0,
+		Summary:       summary,
+		Diagnostics:   diagnostic.Diagnostics{},
+		Findings:      findings,
+		Strict:        strict,
 	}
 	encoder := json.NewEncoder(writer)
 	if pretty {

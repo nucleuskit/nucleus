@@ -1,6 +1,10 @@
 package plan
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/nucleuskit/contract/diagnostic"
+)
 
 func anyStringSlice(value any) []string {
 	switch items := value.(type) {
@@ -65,4 +69,15 @@ func uniqueStrings(values []string) []string {
 		result = append(result, value)
 	}
 	return result
+}
+
+func mapDiagnostics(value any) diagnostic.Diagnostics {
+	switch diagnostics := value.(type) {
+	case diagnostic.Diagnostics:
+		return diagnostics
+	case []diagnostic.Diagnostic:
+		return diagnostic.Diagnostics(diagnostics)
+	default:
+		return diagnostic.Diagnostics{}
+	}
 }

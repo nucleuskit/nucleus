@@ -39,6 +39,9 @@ func TestCommandJSONPlanOutput(t *testing.T) {
 	if output["result_kind"] != resultKindScenarioPlan || output["ok"] != true {
 		t.Fatalf("unexpected result metadata: %#v", output)
 	}
+	if output["schema_ref"] != scenarioSchemaRef {
+		t.Fatalf("schema_ref = %#v, want %s", output["schema_ref"], scenarioSchemaRef)
+	}
 	if len(output["scenarios"].([]any)) == 0 {
 		t.Fatalf("expected scenarios in output: %#v", output)
 	}
@@ -62,16 +65,24 @@ func TestCommandJSONDraftCasesOutput(t *testing.T) {
 		t.Fatalf("stderr = %q, want empty", stderr.String())
 	}
 	var output struct {
-		ResultKind string     `json:"result_kind"`
-		OK         bool       `json:"ok"`
-		Kind       string     `json:"kind"`
-		Cases      []HTTPCase `json:"cases"`
+		ResultKind  string     `json:"result_kind"`
+		SchemaRef   string     `json:"schema_ref"`
+		OK          bool       `json:"ok"`
+		Kind        string     `json:"kind"`
+		Diagnostics []any      `json:"diagnostics"`
+		Cases       []HTTPCase `json:"cases"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("decode JSON: %v\n%s", err, stdout.String())
 	}
 	if output.ResultKind != resultKindHTTPCaseDrafts || !output.OK || output.Kind != httpCaseDraftsKind {
 		t.Fatalf("unexpected draft output: %#v", output)
+	}
+	if output.SchemaRef != scenarioSchemaRef {
+		t.Fatalf("schema_ref = %q, want %q", output.SchemaRef, scenarioSchemaRef)
+	}
+	if output.Diagnostics == nil {
+		t.Fatal("diagnostics = nil, want empty array")
 	}
 	if len(output.Cases) == 0 {
 		t.Fatalf("expected cases in output: %#v", output)
@@ -147,7 +158,7 @@ func TestCommandRunHTTPFailureReturnsSentinel(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("decode JSON: %v\n%s", err, stdout.String())
 	}
-	if output["kind"] != httpEvidenceKind || output["pass"] != false || output["status"] != "failed" {
+	if output["result_kind"] != httpEvidenceKind || output["ok"] != false || output["status"] != "failed" {
 		t.Fatalf("unexpected evidence: %#v", output)
 	}
 }

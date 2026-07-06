@@ -52,6 +52,12 @@ paths:
 	if plan["schema_version"] != scenarioSchemaVersion {
 		t.Fatalf("unexpected schema version: %#v", plan["schema_version"])
 	}
+	if plan["schema_ref"] != scenarioSchemaRef {
+		t.Fatalf("unexpected schema ref: %#v", plan["schema_ref"])
+	}
+	if _, ok := plan["diagnostics"].([]map[string]any); !ok {
+		t.Fatalf("unexpected diagnostics shape: %#v", plan["diagnostics"])
+	}
 	summary, ok := plan["summary"].(map[string]any)
 	if !ok || summary["scenarios"] != 3 {
 		t.Fatalf("unexpected summary: %#v", plan["summary"])
@@ -174,7 +180,7 @@ paths:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if evidence["kind"] != httpEvidenceKind || evidence["pass"] != true {
+	if evidence["result_kind"] != httpEvidenceKind || evidence["ok"] != true {
 		t.Fatalf("unexpected evidence: %#v", evidence)
 	}
 	if evidence["schema_ref"] != evidenceSchemaRef {
@@ -279,7 +285,7 @@ paths:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if evidence["pass"] != true {
+	if evidence["ok"] != true {
 		t.Fatalf("unexpected evidence: %#v", evidence)
 	}
 }
@@ -352,11 +358,11 @@ paths:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if evidence["kind"] != httpEvidenceKind || evidence["pass"] != true || evidence["status"] != "passed" {
+	if evidence["result_kind"] != httpEvidenceKind || evidence["ok"] != true || evidence["status"] != "passed" {
 		t.Fatalf("unexpected evidence: %#v", evidence)
 	}
 	steps := evidence["steps"].([]map[string]any)
-	if len(steps) != 1 || steps[0]["pass"] != true {
+	if len(steps) != 1 || steps[0]["ok"] != true {
 		t.Fatalf("unexpected steps: %#v", steps)
 	}
 	if steps[0]["envelope_code"] != 0 || steps[0]["envelope_message"] != "ok" {
@@ -403,7 +409,7 @@ paths:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if evidence["pass"] != false || evidence["status"] != "failed" {
+	if evidence["ok"] != false || evidence["status"] != "failed" {
 		t.Fatalf("unexpected evidence: %#v", evidence)
 	}
 	steps := evidence["steps"].([]map[string]any)

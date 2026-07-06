@@ -9,15 +9,14 @@ import (
 )
 
 type reportResult struct {
-	ResultKind        string                   `json:"result_kind"`
-	SchemaVersion     string                   `json:"schema_version"`
-	SchemaRef         string                   `json:"schema_ref"`
-	OK                bool                     `json:"ok"`
-	Mode              string                   `json:"mode"`
-	Summary           reportSummary            `json:"summary"`
-	Diagnostics       diagnostic.Diagnostics   `json:"diagnostics"`
-	AIQuality         *aiQualityReport         `json:"ai_quality,omitempty"`
-	PlatformReadiness *platformReadinessReport `json:"platform_readiness,omitempty"`
+	ResultKind    string                 `json:"result_kind"`
+	SchemaVersion string                 `json:"schema_version"`
+	SchemaRef     string                 `json:"schema_ref"`
+	OK            bool                   `json:"ok"`
+	Mode          string                 `json:"mode"`
+	Summary       reportSummary          `json:"summary"`
+	Diagnostics   diagnostic.Diagnostics `json:"diagnostics"`
+	AIQuality     *aiQualityReport       `json:"ai_quality,omitempty"`
 }
 
 type reportSummary struct {
@@ -41,16 +40,17 @@ type reportSummary struct {
 	RollbackCount           int     `json:"rollback_count"`
 	CapabilityEventCount    int     `json:"capability_event_count"`
 	CapabilityErrorCount    int     `json:"capability_error_count"`
+	DecisionFileCount       int     `json:"decision_file_count"`
+	DecisionValidCount      int     `json:"decision_valid_count"`
+	DecisionErrorCount      int     `json:"decision_error_count"`
+	LockedDecisionCount     int     `json:"locked_decision_count"`
+	DecisionDriftCount      int     `json:"decision_drift_count"`
+	RecipeCandidateTasks    int     `json:"recipe_candidate_tasks"`
+	RecipeCandidateCount    int     `json:"recipe_candidate_count"`
 	EndpointCount           int     `json:"endpoint_count"`
 	GRPCServiceCount        int     `json:"grpc_service_count"`
 	CapabilityCount         int     `json:"capability_count"`
 	GeneratedFresh          bool    `json:"generated_fresh"`
-	ReadinessGateCount      int     `json:"readiness_gate_count"`
-	ReadinessGatePassed     int     `json:"readiness_gate_passed"`
-	ReadinessGateFailed     int     `json:"readiness_gate_failed"`
-	RiskGateCount           int     `json:"risk_gate_count"`
-	RiskGatePassed          int     `json:"risk_gate_passed"`
-	RiskGateFailed          int     `json:"risk_gate_failed"`
 }
 
 func renderHuman(stdout io.Writer, stderr io.Writer, result reportResult) {
@@ -63,12 +63,7 @@ func renderHuman(stdout io.Writer, stderr io.Writer, result reportResult) {
 		_, _ = fmt.Fprintln(stderr, "FAILED")
 	}
 	_, _ = fmt.Fprintf(stdout, "mode: %s\n", result.Mode)
-	switch result.Mode {
-	case reportModePlatformReadiness:
-		renderPlatformHuman(stdout, result)
-	default:
-		renderAIQualityHuman(stdout, result)
-	}
+	renderAIQualityHuman(stdout, result)
 	_, _ = fmt.Fprintf(stdout, "diagnostics: %d errors, %d warnings\n", result.Summary.Errors, result.Summary.Warnings)
 }
 
@@ -80,20 +75,9 @@ func renderAIQualityHuman(stdout io.Writer, result reportResult) {
 	_, _ = fmt.Fprintf(stdout, "manual_intervention_rate: %.2f\n", result.Summary.ManualInterventionRate)
 	if result.AIQuality != nil && result.AIQuality.TasksDir != "" {
 		_, _ = fmt.Fprintf(stdout, "ai_tasks: %s\n", result.AIQuality.TasksDir)
+		_, _ = fmt.Fprintf(stdout, "decisions: files=%d valid=%d locked=%d drift=%d\n", result.AIQuality.DecisionQuality.Files, result.AIQuality.DecisionQuality.Valid, result.AIQuality.DecisionQuality.AcceptedLocked, result.AIQuality.DecisionQuality.Drift)
+		_, _ = fmt.Fprintf(stdout, "recipe_candidates: tasks=%d candidates=%d decision_required=%d\n", result.AIQuality.RecipeCandidateUsage.CandidateTaskCount, result.AIQuality.RecipeCandidateUsage.CandidateCount, result.AIQuality.RecipeCandidateUsage.DecisionRequiredCount)
 	}
-}
-
-func renderPlatformHuman(stdout io.Writer, result reportResult) {
-	if result.PlatformReadiness == nil {
-		return
-	}
-	platform := result.PlatformReadiness
-	_, _ = fmt.Fprintf(stdout, "service: %s\n", platform.Service)
-	_, _ = fmt.Fprintf(stdout, "version: %s\n", platform.Version)
-	_, _ = fmt.Fprintf(stdout, "endpoints: %d\n", result.Summary.EndpointCount)
-	_, _ = fmt.Fprintf(stdout, "capabilities: %d\n", result.Summary.CapabilityCount)
-	_, _ = fmt.Fprintf(stdout, "generated_fresh: %t\n", result.Summary.GeneratedFresh)
-	_, _ = fmt.Fprintf(stdout, "readiness_gates: %d passed, %d failed\n", result.Summary.ReadinessGatePassed, result.Summary.ReadinessGateFailed)
 }
 
 func renderJSON(writer io.Writer, result reportResult, pretty bool) error {

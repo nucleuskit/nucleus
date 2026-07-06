@@ -2,18 +2,17 @@
 
 ## Product Boundary
 
-Nucleus is an AI-native Go service kernel: Contract/Manifest SSOT, thin service kernel, capability protocol, runtime adapters, and safe AI editing workflow.
+Nucleus is an agent-native Go microservice protocol layer: contract facts, manifest indexes, decision evidence, graph inspection, edit surfaces, and safe AI editing workflow.
 
-It is not a general application scaffold, UI wizard, business domain model, middleware bundle, or compatibility layer for unrelated frameworks.
+It is not a general application scaffold, UI wizard, business domain model, middleware bundle, provider SDK collection, or compatibility layer for unrelated frameworks.
 
 ## Layer Rules
 
-- `core/*`: standard library only.
-- `cap/*`: capability interfaces, options, and noop implementations.
-- `bridge/*`: optional provider implementations of capabilities.
-- `runtime/*`: transport assembly over `core` and `cap`; do not import `bridge`.
-- business `domain/*`: depend on domain ports and core concepts only; do not import transport frameworks or provider bridges.
-- business `internal/app`: assemble runtime, capabilities, providers, and bridges.
+- Project structure belongs to the user repository, not to Nucleus.
+- Use the repository's own `AGENTS.md`, existing packages, and local conventions before creating paths.
+- Keep domain code independent of provider SDKs and transport frameworks unless the project already owns that boundary.
+- Keep provider/library/driver choices in project code and `.nucleus/decisions`, not in `nucleus.yaml`.
+- Treat Nucleus runtime modules as optional project dependencies, not as dependencies introduced by Nucleus adoption.
 
 ## Contract-First
 
@@ -27,13 +26,13 @@ Run generation after contract edits. Treat generated files as readonly unless a 
 
 ## Manifest-First
 
-Service identity, capabilities, dependencies, providers, and AI edit boundaries start in `nucleus.yaml`.
+Service identity, contracts, capabilities, dependencies, and AI edit boundaries start in `nucleus.yaml`.
 
-Capability imports and app wiring must match manifest declarations. Adding provider code without manifest declaration is drift.
+Capability code should match manifest declarations. Adding provider code without manifest declaration or decision evidence is drift.
 
-For business services, adding an existing capability means updating `nucleus.yaml` first, adding safe placeholder config, wiring providers only in `internal/app`, and verifying L004 with `nucleus lint --dir . --strict`. Use `nucleus capability add <capability> --provider <provider> --dir .` when the CLI has a scaffold.
+For business services, adding a capability means updating `nucleus.yaml` with a v2 capability object, recording provider/library/driver choices as `.nucleus/decisions` evidence, and implementing the user-project interface inside allowed edit surfaces.
 
-`sql` is the relational database capability. PostgreSQL, generic `database/sql`, and GORM are provider/bridge choices for `cap/sql`; MongoDB is a separate document-store capability and should use `cap/mongo`.
+Relational storage, document storage, cache, message bus, metrics, tracing, and logging are semantic capability kinds. PostgreSQL, MySQL, GORM, Xorm, Redis, Kafka, Zap, OpenTelemetry, and similar choices are user/project decisions, not Nucleus manifest fields.
 
 ## Edit Surfaces
 

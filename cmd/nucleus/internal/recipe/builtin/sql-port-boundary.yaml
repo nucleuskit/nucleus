@@ -1,0 +1,14 @@
+schema_version: "recipe.v1"
+id: sql-port-boundary
+kind: sql
+language: go
+suggest:
+  interfaces:
+    - keep relational persistence behind a project-owned interface
+    - make transaction ownership explicit in method names or context
+    - do not expose ORM, driver, or generated model types across API boundaries
+  verification:
+    - go test ./...
+risks:
+  - provider, ORM, driver, and migration tooling must be captured as decision evidence
+  - schema changes need project-owned migration verification

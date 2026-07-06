@@ -30,8 +30,8 @@ func renderJSON(writer io.Writer, evidence map[string]any, pretty bool) error {
 }
 
 func evidencePass(evidence map[string]any) bool {
-	pass, _ := evidence["pass"].(bool)
-	return pass
+	ok, _ := evidence["ok"].(bool)
+	return ok
 }
 
 func valueLen(value any) int {

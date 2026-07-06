@@ -37,18 +37,18 @@ func TestCommandJSONBlockedReturnsSentinel(t *testing.T) {
 	}
 
 	var output struct {
-		Kind   string           `json:"kind"`
-		Pass   bool             `json:"pass"`
-		Status string           `json:"status"`
-		Steps  []map[string]any `json:"steps"`
+		ResultKind string           `json:"result_kind"`
+		OK         bool             `json:"ok"`
+		Status     string           `json:"status"`
+		Steps      []map[string]any `json:"steps"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("decode JSON: %v\n%s", err, stdout.String())
 	}
-	if output.Kind != "nucleus.executor_evidence" || output.Pass || output.Status != "failed" {
+	if output.ResultKind != resultKindExecutorEvidence || output.OK || output.Status != "failed" {
 		t.Fatalf("unexpected executor evidence: %#v", output)
 	}
-	if len(output.Steps) != 1 || output.Steps[0]["status"] != "blocked" {
+	if len(output.Steps) != 1 || output.Steps[0]["ok"] != false || output.Steps[0]["status"] != "blocked" {
 		t.Fatalf("steps = %#v, want blocked command", output.Steps)
 	}
 }

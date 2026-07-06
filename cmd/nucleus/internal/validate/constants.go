@@ -14,7 +14,9 @@ const (
 )
 
 const (
-	resultKindValidate = "nucleus.validate_result"
-	jsonIndentPrefix   = ""
-	jsonIndentValue    = "  "
+	resultKindValidate    = "nucleus.validate_result"
+	schemaVersionValidate = "validate-result.v1"
+	schemaRefValidate     = "contract/schema/validate-result.v1.schema.json"
+	jsonIndentPrefix      = ""
+	jsonIndentValue       = "  "
 )

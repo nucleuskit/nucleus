@@ -73,12 +73,13 @@ func TestHandlerRejectsNonGETMetadataRequests(t *testing.T) {
 func writeServiceFixture(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	writeFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
 capabilities:
-  - http
+  - id: http
+    kind: http
 `)
 	writeFile(t, dir, "api/openapi.yaml", `openapi: 3.1.0
 info:

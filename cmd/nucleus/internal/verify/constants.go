@@ -15,8 +15,8 @@ const (
 
 const (
 	resultKindVerify = "nucleus.verify_result"
-	schemaVersion    = "verify.v1"
-	schemaRef        = "contract/schema/evidence.schema.json"
+	schemaVersion    = "evidence.v1"
+	schemaRef        = "contract/schema/evidence.v1.schema.json"
 	jsonIndentPrefix = ""
 	jsonIndentValue  = "  "
 )
@@ -24,21 +24,21 @@ const (
 const (
 	phaseValidate           = "validate"
 	phaseLint               = "lint"
+	phaseDecision           = "decision"
 	phaseGeneratedFreshness = "generated_freshness"
-	phaseTidy               = "tidy"
-	phaseImport             = "import"
-	phaseBuild              = "build"
-	phaseTest               = "test"
+	phaseVerifyCommand      = "verify_command"
 )
 
 const (
-	commandValidate           = "nucleus validate --dir ."
-	commandLintStrict         = "nucleus lint --dir . --strict"
-	commandGeneratedFreshness = "nucleus describe --dir . --json"
-	commandWorkingDir         = "."
-	statusPassed              = "passed"
-	statusFailed              = "failed"
-	redactedValue             = "[REDACTED]"
-	truncatedOutputNotice     = "[output truncated]"
-	maxCommandOutputRunes     = 32768
+	commandValidate             = "nucleus validate --dir ."
+	commandLintStrict           = "nucleus lint --dir . --strict"
+	commandDecisionValidate     = "nucleus decision validate --dir ."
+	commandGeneratedFreshness   = "nucleus describe --dir . --json"
+	commandWorkingDir           = "."
+	statusPassed                = "passed"
+	statusFailed                = "failed"
+	redactedValue               = "[REDACTED]"
+	truncatedOutputNotice       = "[output truncated]"
+	maxCommandOutputRunes       = 32768
+	projectVerifyTimeoutSeconds = 120
 )

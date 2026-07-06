@@ -553,7 +553,7 @@ Run:
 
 ```bash
 tmp=$(mktemp -d)
-printf 'schema_version: "1.0"\nservice:\n  name: demo\n  version: "0.1.0"\n' > "$tmp/nucleus.yaml"
+printf 'schema_version: "2.0"\nservice:\n  name: demo\n  version: "0.1.0"\nai:\n  intent: validate command smoke test\n' > "$tmp/nucleus.yaml"
 mkdir -p "$tmp/api"
 printf 'openapi: [\n' > "$tmp/api/openapi.yaml"
 rtk go run ./cmd/nucleus validate --dir "$tmp"
@@ -620,7 +620,7 @@ git commit -m "docs: align describe validation contract"
 **Files:**
 - Modify: `README.md`
 - Modify: `CONTRIBUTING.md`
-- Optionally modify: `docs/concepts/ai-first-microservice-kernel.md`
+- Optionally modify: `docs/concepts/agent-native-protocol-layer.md`
 
 **Step 1: Add concise validate semantics**
 
@@ -706,4 +706,3 @@ git log --oneline -n 12
 ```
 
 Expected: only intended validate-related changes remain.
-

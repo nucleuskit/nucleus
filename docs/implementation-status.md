@@ -1,89 +1,118 @@
 # Implementation Status
 
-This document records what the current checkout actually implements. It is meant
-to keep the public positioning honest: Nucleus is an AI-first microservice
-kernel, not a production-complete replacement for go-zero, Kratos, go-kit, or a
-full middleware platform.
+This document records what the current checkout actually implements after the
+agent-native redesign work. Nucleus is being narrowed into an AI-facing protocol
+layer for Go services, not a project scaffold, provider SDK collection, or
+platform control plane.
 
 ## Status Key
 
 | Status | Meaning |
 | --- | --- |
 | Implemented | Code exists, has tests, and is expected to work in the current checkout. |
-| Published alpha | Code is available through published alpha module tags without local `replace` directives. |
-| Scaffold | The CLI generates service-owned code or metadata, but does not wire a real provider automatically. |
-| Fake/static | Useful for local tests, examples, or metadata checks; not a real external provider integration. |
-| Metadata-only | Produces inspection or readiness evidence without starting business handlers or provider SDKs. |
+| Metadata-only | Produces local inspection or evidence metadata without wiring business handlers or provider SDKs. |
+| Removed | The old scaffold/provider/platform behavior has been deleted from the CLI surface. |
+| In progress | The redesign document calls for more work before this area is complete. |
 
 ## CLI Surface
 
 | Command | Current status | Notes |
 | --- | --- | --- |
-| `nucleus init` | Implemented | Generates service, worker, and library templates. The service template is covered by tests that run validation, strict lint, and `go test ./...`. |
-| `nucleus validate` | Implemented | Validates `nucleus.yaml`, `api/openapi.yaml`, `api/errors.yaml`, and lightweight proto facts. |
-| `nucleus gen` | Implemented | Generates contract metadata, HTTP route binders, gRPC metadata, error metadata, docs, TypeScript schema exports, and minimal clients. |
-| `nucleus lint` | Implemented | Checks architecture boundaries, route registration, capability graph, generated freshness, schema versions, and selected legacy imports. |
-| `nucleus verify` | Implemented | Runs validate, strict lint, generated freshness, `go mod tidy`, import, build, and tests as evidence steps. |
-| `nucleus describe` | Implemented | Emits manifest, contract, capability, module, edit-surface, freshness, and verification facts. |
-| `nucleus plan` | Implemented | Produces task-oriented edit surfaces, commands, and risk notes. Natural-language classification is heuristic. |
-| `nucleus apply` | Implemented | Applies plan file edits only after edit-surface, path traversal, and symlink checks. It deliberately does not execute shell commands. |
-| `nucleus repair` | Implemented | Supports bounded repair for generated freshness and single explicit patch candidates with expected hashes. It is not a general code-repair engine. |
-| `nucleus scenario` | Implemented | Builds OpenAPI/error-derived scenario suggestions and can run explicit HTTP scenario checks when a base URL or handler is provided. |
-| `nucleus serve` | Metadata-only | Serves `/healthz`, `/readyz`, and `/.well-known/nucleus.json` metadata. It does not start generated business handlers. |
-| `nucleus report` | Metadata-only | Summarizes local AI task quality and platform-readiness metadata without network calls. |
-| `nucleus migrate` | Metadata-only | Produces migration checklists and readiness checks. It does not rewrite services. |
-| `nucleus capability add` | Scaffold | Updates manifest metadata and generates service-owned component/app/docs scaffolds. Most providers still need explicit bridge wiring by the service. |
+| `nucleus adopt` | Implemented | Adds a minimal protocol index to an existing project. Writes only `nucleus.yaml` and `.nucleus/*`; does not generate business code or modify `go.mod/go.sum`. |
+| `nucleus init` | Removed | The old service/worker/library template generator was deleted. Adoption is the entry path. |
+| `nucleus capability add` | Removed | Provider scaffold, provider defaults, `postgres` special cases, and dependency writes were deleted from the CLI surface. Capability/provider choices must be recorded as decisions. |
+| `nucleus describe` | Implemented | Emits structured project facts. A project without `nucleus.yaml` is still describable and receives a `manifest.missing` warning. |
+| `nucleus mark` | Implemented | Declares `contract`, `capability`, and `verify` anchors in `nucleus.yaml` only. Capability symbols are written as stable resolved IDs when found, recorded as declared intent when missing, and rejected with candidates when ambiguous. |
+| `nucleus trace` | Implemented | MVP supports `trace symbol` over `symbol_graph`, `trace route` over the conservative flow graph, and `trace capability` over manifest capability anchors. Ambiguous short symbol names fail with candidates instead of guessing. |
+| `nucleus impact` | Implemented | MVP supports `impact symbol`, `impact file`, and `impact contract`; outputs affected symbols, files, tests, routes, and graph edges with confidence metadata. |
+| `nucleus plan` | Implemented | Produces task-oriented edit surfaces, commands, risks, decision-only capability context, read-only recipe candidates, `blocked_decisions` for locked provider/library/driver conflicts, and best-effort `impact_summary` with affected symbols, files, routes, contracts, tests, capabilities, graph edges, and verification commands. It no longer emits provider hints or provider scaffold commands. |
+| `nucleus decision validate` | Implemented | Validates `.nucleus/decisions` evidence against `decision.v1`, manifest capability declarations, edit surfaces, verification commands, locked decision hashes, and supersede hashes. It remains read-only. |
+| `nucleus decision accept` | Implemented | Explicitly accepts one decision file by setting `status: accepted`, `locked: true`, `accepted_by`, `accepted_at`, and canonical `decision_hash`. Writes only the selected decision file. |
+| `nucleus decision supersede` | Implemented | Explicitly fills `supersedes_hash` for one supersede decision from the referenced prior decision. Writes only the selected decision file and does not accept it. |
+| `nucleus validate` | Implemented | Validates manifest and contract files when present. |
+| `nucleus gen` | Implemented | Generates contract-derived artifacts. It should remain contract-only and must not create application wiring or provider glue. |
+| `nucleus lint` | Implemented | Checks protocol and safety rules without binding capabilities to fixed provider/library imports. HTTP remains contract-backed. |
+| `nucleus verify` | Implemented | Runs protocol validation, strict lint, decision quality validation, generated freshness, and only the verification commands declared in `nucleus.yaml`. Decision diagnostics are included in the top-level `evidence.v1` output. |
+| `nucleus apply` | Implemented | Applies plan file edits only after edit-surface, path traversal, and symlink checks. It deliberately does not execute shell commands and emits `evidence.v1`. |
+| `nucleus execute` | Implemented | Executes allowlisted plan commands and emits `evidence.v1`. |
+| `nucleus repair` | Implemented | Supports bounded repair for generated freshness and single explicit patch candidates with expected hashes. It emits `evidence.v1` and is not a general code-repair engine. |
+| `nucleus scenario` | Implemented | Builds OpenAPI/error-derived scenario suggestions and can run explicit HTTP scenario checks when a base URL or handler is provided. Runnable HTTP checks emit `evidence.v1`. |
+| `nucleus serve` | Metadata-only | Serves `/healthz`, `/readyz`, and `/.well-known/nucleus.json` metadata. It can inspect projects without a manifest. |
+| `nucleus report` | Metadata-only | Summarizes local AI task quality, decision quality, locked decision drift, and recipe candidate usage. Platform readiness, upload payloads, release dry-runs, and control-plane fields were removed. |
+| `nucleus mcp --stdio` | Metadata-only | Serves local stdio MCP tools for agents. Tools expose service description, edit surfaces, contracts, capabilities, trace, impact, symbol lookup, decision validation, reports, plans, and read-only recipes. |
+| `nucleus migrate` | Removed | Version migration and compatibility planning was removed because the project is pre-release and should not carry downgrade/compatibility paths. |
 
 ## Contract and Manifest Layer
 
 | Area | Current status | Notes |
 | --- | --- | --- |
-| Manifest parsing | Implemented | Uses structured YAML parsing and validates required service metadata, capability names, dependencies, and AI edit surfaces. |
-| OpenAPI inspection | Implemented | Loads route metadata, parameters, request-body facts, examples, and validation hints from `api/openapi.yaml`. It is a lightweight metadata parser, not a complete OpenAPI toolchain. |
-| Proto inspection | Implemented | Extracts package, service, method, streaming, and `google.api.http` facts with a lightweight parser. It is not a replacement for `protoc`. |
+| Manifest parsing | Implemented | Runtime structs now use manifest v2 objects for contracts and capabilities. Strict YAML parsing rejects removed `nucleus`, provider, library, driver, and platform fields instead of silently accepting them. |
+| No-manifest inspection | Implemented | `describe` infers service name/version from `go.mod` or directory name and emits structured facts instead of failing. |
+| Symbol graph | Implemented | `describe` emits `symbol_graph` with stable Go symbol IDs, package/file/type/interface/function/method nodes, calls, implements, test relation edges, and `source/confidence/stale` edge metadata. |
+| OpenAPI inspection | Implemented | Loads route metadata, request parameters, request body shapes, examples, and validation hints from `api/openapi.yaml`. |
+| Proto inspection | Implemented | Extracts package, service, method, streaming, and `google.api.http` facts with a lightweight parser. |
 | Error catalog | Implemented | Validates stable error codes, messages, and HTTP status mappings from `api/errors.yaml`. |
 | Generated freshness | Implemented | Compares contract source hashes with generated target markers declared in `ai.generated`. |
 
-## Runtime Modules
+## JSON Result Contracts
 
-| Module | Current status | Notes |
-| --- | --- | --- |
-| `github.com/nucleuskit/http` | Published alpha | HTTP server, route registration, response envelopes, middleware, clients, CORS, SSE, static assets, and well-known metadata are implemented and tested. |
-| `github.com/nucleuskit/grpc` | Published alpha | gRPC server/client wrappers, discovery resolver support, health/reflection options, and interceptor chains are implemented and tested. |
-| `github.com/nucleuskit/worker` | Published alpha | Cron, interval, batch, consumer, stream, map-reduce, timing-wheel, hooks, and manager primitives are implemented and tested. |
+Core CLI JSON outputs are being converged on `result_kind`, `schema_version`,
+`schema_ref`, `ok`, and `diagnostics`. Result schemas are materialized for
+adoption, marking, description, validation, linting, generation, scenarios,
+planning, decisions, tracing, impact analysis, serving, reporting, MCP
+structured results, recipe result views, and execution evidence. `plan` fails
+`ok` when top-level diagnostics contain errors, not only when edit or decision
+blockers are present.
 
-The runtime modules use canonical imports such as `github.com/nucleuskit/cap`
-and `github.com/nucleuskit/core`, and the current alpha tags are verified
-without local replacements.
+## Capabilities And Providers
 
-## Capabilities and Bridges
+Capabilities are semantic anchors. They are not provider implementations.
 
-| Area | Current status | Notes |
-| --- | --- | --- |
-| `github.com/nucleuskit/cap` | Implemented | Small capability interfaces, options, no-op implementations, and tests exist for auth, config, discovery, health, HTTP client, KV, lock, log, metric, Mongo, MQ, profiler, Redis, Sentinel, SQL, store, trace, and transport. |
-| In-memory/test bridges | Fake/static | `memory`, `memorylock`, `redis`, `kv`, and several health/config helpers are useful for tests and local examples. They should not be presented as external managed services. |
-| Real provider bridges | Implemented | `goredis`, `sarama`, `sql`, `gorm`, `zap`, `otel`, `prometheus`, `redislock`, and `nacosofficial` contain real provider-facing adapter code and tests. |
-| Static provider bridges | Fake/static | `nacos` provides local/static config and discovery behavior. It is not the official Nacos SDK integration. |
-| Provider scaffolds | Scaffold | `capability add` records provider intent and generates service-owned compile-safe code. Except for the focused PostgreSQL scaffold, it does not automatically import or wire provider SDKs. |
+Provider, library, driver, ORM, SDK, queue, database, and observability choices
+belong in structured decision evidence under `.nucleus/decisions`, not in
+`nucleus.yaml` and not in Go hard-coded defaults.
 
-## Examples
+Capability kind suggestions are stored as data in
+`cmd/nucleus/internal/capvocab/capability-kinds.v1.json`. That vocabulary is
+advisory only: it contains names, aliases, descriptions, and planning flags, but
+no providers, drivers, libraries, default choices, DSNs, or dependency metadata.
 
-The checked-in `examples/service`, `examples/worker`, and `examples/library`
-directories describe templates rather than hosting full generated services. To
-inspect a runnable service today, generate one with:
+Recipe knowledge is loaded from project-local `.nucleus/recipes/*.yaml`,
+`.yml`, or `.json` files plus a small built-in read-only recipe set. Project
+recipes override built-ins with the same id. Recipes are strict, read-only
+knowledge documents: unknown fields such as executable `commands` fail
+validation, and recipe data is not allowed to write files, modify dependencies,
+or become an accepted decision. `plan` exposes safe matches as
+`context.recipe_candidates` with `source` and a `candidate_only` selection
+policy. Recipe suggestions do not modify plan commands, generated outputs,
+provider decisions, dependencies, or locked decision state.
 
-```bash
-nucleus init --template service --name demo-api --module example.com/demo-api --dir ./demo-api
-cd ./demo-api
-nucleus validate --dir .
-nucleus lint --dir . --strict
-nucleus verify --dir . --json
-go test ./...
-```
+## Runtime Boundary
+
+The root repository now keeps only the protocol and code-intelligence boundary.
+Runtime modules are not part of the core project shape. HTTP routers, gRPC
+stacks, worker runtimes, ORMs, drivers, and provider SDKs must be selected and
+owned by the user project, then connected to Nucleus through contracts,
+capability anchors, generated protocol glue, and decision evidence.
+
+`adopt`, `mark capability`, `plan`, `verify`, and `mcp` must not add runtime
+dependencies, pick providers, rewrite `go.mod`, or assume a fixed project
+layout. They should expose enough structured facts for an agent or user to make
+the implementation decision explicitly.
 
 ## Adoption Guidance
 
-Use the current checkout as an AI-safe contract, manifest, generation, and
-evidence loop. Treat it as a production framework replacement only after more
-real services have validated the runtime modules, bridge modules, examples, and
-upgrade path under production-like constraints.
+Use `nucleus adopt --dir . --json` inside an existing Go project to add the
+minimal protocol index. Then use:
+
+```bash
+nucleus mark capability order_store --kind relational_store --symbol OrderStore --json
+nucleus describe --dir . --json --flow
+nucleus plan --dir . --task "<change>" --json
+nucleus mcp --stdio
+nucleus verify --dir . --json
+```
+
+Do not use Nucleus to generate a project layout, select providers, or wire
+third-party SDKs. Those choices belong to the user project and must be captured
+as explicit decision evidence.

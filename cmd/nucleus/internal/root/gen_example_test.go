@@ -39,7 +39,7 @@ func TestGenCommandJSONRootWiring(t *testing.T) {
 
 func writeRootGenService(t *testing.T, dir string) {
 	t.Helper()
-	writeRootGenFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeRootGenFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -49,7 +49,8 @@ ai:
     - contract/gen
     - internal/adapter/http/gen
 capabilities:
-  - http
+  - id: http
+    kind: http
 `)
 	writeRootGenFile(t, dir, "api/openapi.yaml", `openapi: 3.0.3
 paths:

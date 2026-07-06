@@ -12,7 +12,7 @@ import (
 
 func TestCommandJSONSuccess(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, `schema_version: "1.0"
+	writeManifest(t, dir, `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -36,11 +36,14 @@ capabilities: []
 	}
 
 	var output struct {
-		ResultKind string      `json:"result_kind"`
-		OK         bool        `json:"ok"`
-		Summary    lintSummary `json:"summary"`
-		Findings   []any       `json:"findings"`
-		Strict     bool        `json:"strict"`
+		ResultKind    string      `json:"result_kind"`
+		SchemaVersion string      `json:"schema_version"`
+		SchemaRef     string      `json:"schema_ref"`
+		OK            bool        `json:"ok"`
+		Summary       lintSummary `json:"summary"`
+		Diagnostics   []any       `json:"diagnostics"`
+		Findings      []any       `json:"findings"`
+		Strict        bool        `json:"strict"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("decode JSON: %v\n%s", err, stdout.String())
@@ -48,8 +51,17 @@ capabilities: []
 	if output.ResultKind != resultKindLint {
 		t.Fatalf("result_kind = %q, want %q", output.ResultKind, resultKindLint)
 	}
+	if output.SchemaVersion != schemaVersionLint {
+		t.Fatalf("schema_version = %q, want %q", output.SchemaVersion, schemaVersionLint)
+	}
+	if output.SchemaRef != schemaRefLint {
+		t.Fatalf("schema_ref = %q, want %q", output.SchemaRef, schemaRefLint)
+	}
 	if !output.OK {
 		t.Fatal("ok = false, want true")
+	}
+	if output.Diagnostics == nil {
+		t.Fatal("diagnostics = nil, want empty array")
 	}
 	if output.Strict {
 		t.Fatal("strict = true, want false")
@@ -76,7 +88,7 @@ capabilities: []
 
 func TestCommandJSONFailureReturnsSentinel(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, `schema_version: "1.0"
+	writeManifest(t, dir, `schema_version: "2.0"
 service:
   version: "0.1.0"
 ai:
@@ -125,7 +137,7 @@ ai:
 
 func TestCommandJSONStrictUsesStrictRules(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, `schema_version: "1.0"
+	writeManifest(t, dir, `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -174,7 +186,7 @@ dependencies:
 
 func TestCommandHumanSuccessOutput(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, `schema_version: "1.0"
+	writeManifest(t, dir, `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -211,7 +223,7 @@ capabilities: []
 
 func TestCommandHumanFailureOutputMatchesValidateStyle(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, `schema_version: "1.0"
+	writeManifest(t, dir, `schema_version: "2.0"
 service:
   version: "0.1.0"
 ai:
@@ -240,7 +252,7 @@ ai:
 
 func TestCommandHumanStrictSuccessOutputIncludesStrictScope(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, `schema_version: "1.0"
+	writeManifest(t, dir, `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -275,7 +287,7 @@ capabilities: []
 
 func TestCommandPrettyJSONOutput(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, `schema_version: "1.0"
+	writeManifest(t, dir, `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"

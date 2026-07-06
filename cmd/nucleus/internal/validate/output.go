@@ -10,10 +10,12 @@ import (
 )
 
 type validateResult struct {
-	ResultKind  string                 `json:"result_kind"`
-	OK          bool                   `json:"ok"`
-	Summary     validateSummary        `json:"summary"`
-	Diagnostics diagnostic.Diagnostics `json:"diagnostics"`
+	ResultKind    string                 `json:"result_kind"`
+	SchemaVersion string                 `json:"schema_version"`
+	SchemaRef     string                 `json:"schema_ref"`
+	OK            bool                   `json:"ok"`
+	Summary       validateSummary        `json:"summary"`
+	Diagnostics   diagnostic.Diagnostics `json:"diagnostics"`
 }
 
 type validateSummary struct {
@@ -44,10 +46,12 @@ func renderJSON(writer io.Writer, diagnostics diagnostic.Diagnostics, summary va
 		diagnostics = diagnostic.Diagnostics{}
 	}
 	result := validateResult{
-		ResultKind:  resultKindValidate,
-		OK:          !diagnostics.Failed(),
-		Summary:     summary,
-		Diagnostics: diagnostics,
+		ResultKind:    resultKindValidate,
+		SchemaVersion: schemaVersionValidate,
+		SchemaRef:     schemaRefValidate,
+		OK:            !diagnostics.Failed(),
+		Summary:       summary,
+		Diagnostics:   diagnostics,
 	}
 	encoder := json.NewEncoder(writer)
 	if pretty {

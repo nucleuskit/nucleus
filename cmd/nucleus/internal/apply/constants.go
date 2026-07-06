@@ -24,3 +24,9 @@ const (
 	jsonIndentPrefix = ""
 	jsonIndentValue  = "  "
 )
+
+const (
+	resultKindApplyEvidence = "nucleus.apply_evidence"
+	schemaVersionEvidence   = "evidence.v1"
+	schemaRefEvidence       = "contract/schema/evidence.v1.schema.json"
+)

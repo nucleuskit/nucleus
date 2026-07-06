@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/nucleuskit/contract/diagnostic"
+	"github.com/nucleuskit/nucleus/cmd/nucleus/internal/decision"
 )
 
 type aiQualityReport struct {
@@ -35,6 +37,8 @@ type aiQualityReport struct {
 	CapabilityErrorCount    int                          `json:"capability_error_count"`
 	CapabilitySummary       map[string]capabilitySummary `json:"capability_summary"`
 	StrategySummary         strategyReport               `json:"strategy_summary"`
+	DecisionQuality         decision.QualitySummary      `json:"decision_quality"`
+	RecipeCandidateUsage    recipeCandidateUsageReport   `json:"recipe_candidate_usage"`
 	WeeklyReport            string                       `json:"weekly_report"`
 }
 
@@ -93,6 +97,15 @@ type capabilitySummary struct {
 	StatusCount map[string]int `json:"status_count,omitempty"`
 }
 
+type recipeCandidateUsageReport struct {
+	TaskCount              int      `json:"task_count"`
+	CandidateTaskCount     int      `json:"candidate_task_count"`
+	CandidateCount         int      `json:"candidate_count"`
+	DecisionRequiredCount  int      `json:"decision_required_count"`
+	UniqueCandidateIDs     []string `json:"unique_candidate_ids"`
+	RecipeEvidenceCoverage float64  `json:"recipe_evidence_coverage"`
+}
+
 type aiQualityCountSet struct {
 	scenario         int
 	realEvidence     int
@@ -108,8 +121,9 @@ type aiQualityCountSet struct {
 	capabilityErrors int
 }
 
-func buildAIQualityResult(tasksDir string, explicitTasksDir bool) reportResult {
-	report, diagnostics := loadAIQualityReport(tasksDir, explicitTasksDir)
+func buildAIQualityResult(dir string, tasksDir string, explicitTasksDir bool) reportResult {
+	report, diagnostics := loadAIQualityReport(dir, tasksDir, explicitTasksDir)
+	diagnostics = append(diagnostics, report.DecisionQuality.Diagnostics...)
 	summary := reportSummaryFromAIQuality(report)
 	return finalizeReportResult(reportResult{
 		Mode:        reportModeAIQuality,
@@ -119,8 +133,8 @@ func buildAIQualityResult(tasksDir string, explicitTasksDir bool) reportResult {
 	})
 }
 
-func loadAIQualityReport(tasksDir string, explicitTasksDir bool) (aiQualityReport, diagnostic.Diagnostics) {
-	report := emptyAIQualityReport(tasksDir, inputStatusLoaded)
+func loadAIQualityReport(dir string, tasksDir string, explicitTasksDir bool) (aiQualityReport, diagnostic.Diagnostics) {
+	report := emptyAIQualityReport(dir, tasksDir, inputStatusLoaded)
 	entries, err := os.ReadDir(tasksDir)
 	if err != nil {
 		if !explicitTasksDir && errors.Is(err, os.ErrNotExist) {
@@ -148,15 +162,17 @@ func loadAIQualityReport(tasksDir string, explicitTasksDir bool) (aiQualityRepor
 		}
 		tasks = append(tasks, task)
 	}
-	return aiQualityReportFromTasks(tasksDir, inputStatusLoaded, tasks), diagnostics
+	return aiQualityReportFromTasks(dir, tasksDir, inputStatusLoaded, tasks), diagnostics
 }
 
-func emptyAIQualityReport(tasksDir string, status string) aiQualityReport {
-	return aiQualityReportFromTasks(tasksDir, status, nil)
+func emptyAIQualityReport(dir string, tasksDir string, status string) aiQualityReport {
+	return aiQualityReportFromTasks(dir, tasksDir, status, nil)
 }
 
-func aiQualityReportFromTasks(tasksDir string, status string, tasks []aiTaskResult) aiQualityReport {
+func aiQualityReportFromTasks(dir string, tasksDir string, status string, tasks []aiTaskResult) aiQualityReport {
 	counts := aiQualityCounts(tasks)
+	decisionQuality := decision.QualityForDir(dir)
+	recipeCandidateUsage := buildRecipeCandidateUsage(tasks)
 	report := aiQualityReport{
 		InputStatus:             status,
 		TasksDir:                safeReportPath(tasksDir),
@@ -181,6 +197,8 @@ func aiQualityReportFromTasks(tasksDir string, status string, tasks []aiTaskResu
 		CapabilityErrorCount:    counts.capabilityErrors,
 		CapabilitySummary:       buildCapabilitySummary(tasks),
 		StrategySummary:         buildStrategySummary(tasks),
+		DecisionQuality:         decisionQuality,
+		RecipeCandidateUsage:    recipeCandidateUsage,
 	}
 	report.WeeklyReport = aiQualityMarkdown(report)
 	return report
@@ -206,6 +224,13 @@ func reportSummaryFromAIQuality(report aiQualityReport) reportSummary {
 		RollbackCount:           report.RollbackCount,
 		CapabilityEventCount:    report.CapabilityEventCount,
 		CapabilityErrorCount:    report.CapabilityErrorCount,
+		DecisionFileCount:       report.DecisionQuality.Files,
+		DecisionValidCount:      report.DecisionQuality.Valid,
+		DecisionErrorCount:      report.DecisionQuality.Errors,
+		LockedDecisionCount:     report.DecisionQuality.AcceptedLocked,
+		DecisionDriftCount:      report.DecisionQuality.Drift,
+		RecipeCandidateTasks:    report.RecipeCandidateUsage.CandidateTaskCount,
+		RecipeCandidateCount:    report.RecipeCandidateUsage.CandidateCount,
 	}
 }
 
@@ -251,7 +276,7 @@ func normalizeAITaskResult(task *aiTaskResult) {
 
 func normalizeRepairEvidenceTask(task *aiTaskResult) {
 	status := evidenceString(task.Evidence, "status", "")
-	verificationPass := evidenceBool(task.Evidence, "verification_pass", evidenceBool(task.Evidence, "pass", false))
+	verificationPass := evidenceBool(task.Evidence, "verification_pass", evidenceBool(task.Evidence, "ok", false))
 	task.FailureLocated = replayFailureLocated(task.Evidence)
 	task.FailureType = evidenceString(task.Evidence, "failure_type", status)
 	task.ManualActionReason = evidenceString(task.Evidence, "manual_action_reason", "")
@@ -278,7 +303,7 @@ func normalizeVerifyEvidenceTask(task *aiTaskResult) {
 }
 
 func normalizeGenericEvidenceTask(task *aiTaskResult) {
-	pass := evidenceBool(task.Evidence, "pass", evidenceBool(task.Evidence, "verification_pass", false))
+	pass := evidenceBool(task.Evidence, "ok", evidenceBool(task.Evidence, "verification_pass", false))
 	status := evidenceString(task.Evidence, "status", "")
 	task.PlanPass = true
 	task.ApplyPass = pass
@@ -292,9 +317,6 @@ func normalizeGenericEvidenceTask(task *aiTaskResult) {
 func evidenceKind(evidence map[string]any) string {
 	if evidence == nil {
 		return ""
-	}
-	if kind := evidenceString(evidence, "kind", ""); kind != "" {
-		return kind
 	}
 	return evidenceString(evidence, "result_kind", "")
 }
@@ -385,9 +407,6 @@ func replayRepairStrategy(evidence map[string]any) string {
 
 func verifyEvidenceHasFailedStep(evidence map[string]any) bool {
 	for _, step := range evidenceSteps(evidence) {
-		if pass, exists := step["pass"].(bool); exists && !pass {
-			return true
-		}
 		if ok, exists := step["ok"].(bool); exists && !ok {
 			return true
 		}
@@ -401,9 +420,6 @@ func verifyEvidenceHasFailedStep(evidence map[string]any) bool {
 
 func verifyFailureType(evidence map[string]any) string {
 	for _, step := range evidenceSteps(evidence) {
-		if pass, hasPass := step["pass"].(bool); hasPass && pass {
-			continue
-		}
 		ok, hasOK := step["ok"].(bool)
 		status, _ := step["status"].(string)
 		if (hasOK && ok) || status == "passed" {
@@ -565,6 +581,71 @@ func buildCapabilitySummary(tasks []aiTaskResult) map[string]capabilitySummary {
 	return summaries
 }
 
+func buildRecipeCandidateUsage(tasks []aiTaskResult) recipeCandidateUsageReport {
+	usage := recipeCandidateUsageReport{TaskCount: len(tasks)}
+	ids := map[string]bool{}
+	for _, task := range tasks {
+		before := usage.CandidateCount
+		collectRecipeCandidates(task.Evidence, &usage, ids)
+		if usage.CandidateCount > before {
+			usage.CandidateTaskCount++
+		}
+	}
+	usage.UniqueCandidateIDs = sortedStringKeys(ids)
+	usage.RecipeEvidenceCoverage = rate(usage.CandidateTaskCount, usage.TaskCount)
+	return usage
+}
+
+func collectRecipeCandidates(value any, usage *recipeCandidateUsageReport, ids map[string]bool) {
+	switch item := value.(type) {
+	case map[string]any:
+		for key, child := range item {
+			if key == "recipe_candidates" {
+				countRecipeCandidateArray(child, usage, ids)
+				continue
+			}
+			if key == "candidates" && evidenceKind(item) == "nucleus.recipe_candidate_result" {
+				countRecipeCandidateArray(child, usage, ids)
+				continue
+			}
+			collectRecipeCandidates(child, usage, ids)
+		}
+	case []any:
+		for _, child := range item {
+			collectRecipeCandidates(child, usage, ids)
+		}
+	}
+}
+
+func countRecipeCandidateArray(value any, usage *recipeCandidateUsageReport, ids map[string]bool) {
+	items, ok := value.([]any)
+	if !ok {
+		return
+	}
+	for _, raw := range items {
+		candidate, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		usage.CandidateCount++
+		if id := evidenceString(candidate, "id", ""); id != "" {
+			ids[id] = true
+		}
+		if required, ok := candidate["decision_required"].(bool); ok && required {
+			usage.DecisionRequiredCount++
+		}
+	}
+}
+
+func sortedStringKeys(values map[string]bool) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 func capabilityEventFailed(event capabilityEvent) bool {
 	switch event.Status {
 	case "error", "failed", "timeout", "rejected":
@@ -623,7 +704,7 @@ func chooseNonEmpty(value string, fallback string) string {
 
 func aiQualityMarkdown(report aiQualityReport) string {
 	return fmt.Sprintf(
-		"AI quality report: tasks=%d scenario=%d real_evidence=%d source_coverage=%.2f first_pass=%.2f failure_located=%.2f repair_success=%.2f manual_intervention=%.2f rollback=%.2f",
+		"AI quality report: tasks=%d scenario=%d real_evidence=%d source_coverage=%.2f first_pass=%.2f failure_located=%.2f repair_success=%.2f manual_intervention=%.2f rollback=%.2f decisions=%d locked=%d decision_drift=%d recipe_candidates=%d",
 		report.TaskCount,
 		report.ScenarioTaskCount,
 		report.RealEvidenceTaskCount,
@@ -633,6 +714,10 @@ func aiQualityMarkdown(report aiQualityReport) string {
 		report.RepairSuccessRate,
 		report.ManualInterventionRate,
 		report.RollbackRate,
+		report.DecisionQuality.Files,
+		report.DecisionQuality.AcceptedLocked,
+		report.DecisionQuality.Drift,
+		report.RecipeCandidateUsage.CandidateCount,
 	)
 }
 

@@ -58,9 +58,46 @@ func TestCommandJSONSuccess(t *testing.T) {
 	if output.Summary.Failed != 0 {
 		t.Fatalf("summary.failed = %d, want 0", output.Summary.Failed)
 	}
-	assertSuccessfulStepOrder(t, output.Steps, []string{"validate", "lint", "generated_freshness", "tidy", "import", "build", "test"})
-	if output.Summary.Steps != 7 || output.Summary.Passed != 7 {
-		t.Fatalf("summary = %#v, want 7 steps passed", output.Summary)
+	assertSuccessfulStepOrder(t, output.Steps, []string{"validate", "lint", "decision", "generated_freshness"})
+	if output.Summary.Steps != 4 || output.Summary.Passed != 4 {
+		t.Fatalf("summary = %#v, want 4 steps passed", output.Summary)
+	}
+}
+
+func TestCommandJSONRunsManifestVerifyCommands(t *testing.T) {
+	dir := t.TempDir()
+	writeVerifyModuleWithCommands(t, dir, []string{"go test ./..."})
+
+	cmd := NewCommand(Config{Dir: &dir})
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--json"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute verify: %v\nstdout=%s", err, stdout.String())
+	}
+
+	var output struct {
+		OK      bool          `json:"ok"`
+		Summary verifySummary `json:"summary"`
+		Steps   []verifyStep  `json:"steps"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("decode JSON: %v\n%s", err, stdout.String())
+	}
+	if !output.OK {
+		t.Fatal("ok = false, want true")
+	}
+	step, ok := findStep(output.Steps, "verify_command")
+	if !ok {
+		t.Fatalf("steps = %#v, want manifest verify command step", output.Steps)
+	}
+	if step.ID != "verify_command_1" || step.Command != "go test ./..." || !step.OK {
+		t.Fatalf("verify command step = %#v", step)
+	}
+	if output.Summary.Steps != 5 || output.Summary.Passed != 5 {
+		t.Fatalf("summary = %#v, want protocol steps plus one declared verify command", output.Summary)
 	}
 }
 
@@ -68,7 +105,7 @@ func TestCommandJSONValidationFailure(t *testing.T) {
 	dir := t.TempDir()
 	writeVerifyFile(t, dir, "go.mod", "module example.com/demo\n\ngo 1.26.3\n")
 	writeVerifyFile(t, dir, "demo.go", "package demo\n")
-	writeVerifyFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeVerifyFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   version: "0.1.0"
 ai:
@@ -160,8 +197,8 @@ func TestCommandJSONGeneratedFreshnessFailure(t *testing.T) {
 	if item := step.GeneratedFreshness[0]; item.Target != "contract/gen" || item.Fresh {
 		t.Fatalf("generated_freshness item = %#v, want stale contract/gen", item)
 	}
-	if _, ok := findStep(output.Steps, "tidy"); ok {
-		t.Fatalf("steps = %#v, tidy should not run after generated freshness failure", output.Steps)
+	if _, ok := findStep(output.Steps, "verify_command"); ok {
+		t.Fatalf("steps = %#v, verify commands should not run after generated freshness failure", output.Steps)
 	}
 	foundL010 := false
 	for _, finding := range output.Findings {
@@ -175,6 +212,69 @@ func TestCommandJSONGeneratedFreshnessFailure(t *testing.T) {
 	}
 	if output.Summary.Failed == 0 {
 		t.Fatalf("summary.failed = 0, want failed steps")
+	}
+}
+
+func TestCommandJSONDecisionFailure(t *testing.T) {
+	dir := t.TempDir()
+	writeVerifyModule(t, dir)
+	writeVerifyFile(t, dir, ".nucleus/decisions/bad.yaml", `schema_version: "decision.v1"
+id: bad
+capability: missing
+decision:
+  provider: gorm
+  status: proposed
+  locked: false
+reason:
+  - missing capability declaration
+verification:
+  commands:
+    - go test ./...
+`)
+
+	cmd := NewCommand(Config{Dir: &dir})
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--json"})
+
+	err := cmd.Execute()
+	if !errors.Is(err, ErrVerifyFailed) {
+		t.Fatalf("execute verify error = %v, want ErrVerifyFailed", err)
+	}
+
+	var output struct {
+		OK          bool         `json:"ok"`
+		Steps       []verifyStep `json:"steps"`
+		Diagnostics []struct {
+			Code string `json:"code"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("decode JSON: %v\n%s", err, stdout.String())
+	}
+	if output.OK {
+		t.Fatal("ok = true, want false")
+	}
+	step, ok := findStep(output.Steps, "decision")
+	if !ok {
+		t.Fatalf("steps = %#v, want decision phase", output.Steps)
+	}
+	if step.OK || step.DecisionQuality == nil || step.DecisionQuality.Errors == 0 {
+		t.Fatalf("decision step = %#v, want failed decision quality", step)
+	}
+	if _, ok := findStep(output.Steps, "generated_freshness"); ok {
+		t.Fatalf("steps = %#v, generated_freshness should not run after decision failure", output.Steps)
+	}
+	found := false
+	for _, item := range output.Diagnostics {
+		if item.Code == "decision.capability_missing" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("diagnostics = %#v, want decision.capability_missing", output.Diagnostics)
 	}
 }
 
@@ -220,7 +320,7 @@ func TestCommandJSONGeneratedFreshnessSuccess(t *testing.T) {
 	}
 }
 
-func TestCommandJSONTidyChangedModuleFilesFailure(t *testing.T) {
+func TestCommandJSONDoesNotRunImplicitTidy(t *testing.T) {
 	dir := t.TempDir()
 	originalGoMod := `module example.com/demo
 
@@ -233,7 +333,7 @@ replace example.com/unused => ./unused
 	writeVerifyFile(t, dir, "go.mod", originalGoMod)
 	writeVerifyFile(t, dir, "demo.go", "package demo\n")
 	writeVerifyFile(t, dir, "unused/go.mod", "module example.com/unused\n\ngo 1.26.3\n")
-	writeVerifyFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeVerifyFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -248,9 +348,8 @@ capabilities: []
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"--json"})
 
-	err := cmd.Execute()
-	if !errors.Is(err, ErrVerifyFailed) {
-		t.Fatalf("execute verify error = %v, want ErrVerifyFailed", err)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute verify: %v\nstdout=%s", err, stdout.String())
 	}
 
 	var output struct {
@@ -260,24 +359,13 @@ capabilities: []
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("decode JSON: %v\n%s", err, stdout.String())
 	}
-	if output.OK {
-		t.Fatal("ok = true, want false")
+	if !output.OK {
+		t.Fatal("ok = false, want true")
 	}
-	step, ok := findStep(output.Steps, "tidy")
-	if !ok {
-		t.Fatalf("steps = %#v, want tidy phase", output.Steps)
-	}
-	if step.OK {
-		t.Fatalf("tidy step OK = true, want false")
-	}
-	if step.Error != "go mod tidy changed module files" {
-		t.Fatalf("tidy error = %q, want changed module files", step.Error)
-	}
-	if !containsString(step.ChangedPaths, "go.mod") {
-		t.Fatalf("changed_paths = %#v, want go.mod", step.ChangedPaths)
-	}
-	if _, ok := findStep(output.Steps, "import"); ok {
-		t.Fatalf("steps = %#v, import should not run after tidy failure", output.Steps)
+	for _, forbidden := range []string{"tidy", "import", "build", "test"} {
+		if _, ok := findStep(output.Steps, forbidden); ok {
+			t.Fatalf("steps = %#v, verify should not run implicit %s step", output.Steps, forbidden)
+		}
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
 	if err != nil {
@@ -311,7 +399,7 @@ func writeVerifyModule(t *testing.T, dir string) {
 	t.Helper()
 	writeVerifyFile(t, dir, "go.mod", "module example.com/demo\n\ngo 1.26.3\n")
 	writeVerifyFile(t, dir, "demo.go", "package demo\n")
-	writeVerifyFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeVerifyFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -319,6 +407,30 @@ ai:
   intent: test
 capabilities: []
 `)
+}
+
+func writeVerifyModuleWithCommands(t *testing.T, dir string, commands []string) {
+	t.Helper()
+	writeVerifyFile(t, dir, "go.mod", "module example.com/demo\n\ngo 1.26.3\n")
+	writeVerifyFile(t, dir, "demo.go", "package demo\n")
+	var verifyBlock strings.Builder
+	if len(commands) > 0 {
+		verifyBlock.WriteString("verify:\n  commands:\n")
+		for _, command := range commands {
+			data, _ := json.Marshal(command)
+			verifyBlock.WriteString("    - ")
+			verifyBlock.Write(data)
+			verifyBlock.WriteString("\n")
+		}
+	}
+	writeVerifyFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
+service:
+  name: demo
+  version: "0.1.0"
+ai:
+  intent: test
+capabilities: []
+`+verifyBlock.String())
 }
 
 func writeVerifyGeneratedModule(t *testing.T, dir string) {
@@ -337,7 +449,7 @@ paths:
         "204":
           description: ok
 `)
-	writeVerifyFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeVerifyFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"
@@ -381,6 +493,9 @@ func assertSuccessfulStepOrder(t *testing.T, steps []verifyStep, want []string) 
 		}
 		if step.ID != phase {
 			t.Fatalf("steps[%d].id = %q, want %q", index, step.ID, phase)
+		}
+		if step.Kind != phase {
+			t.Fatalf("steps[%d].kind = %q, want %q", index, step.Kind, phase)
 		}
 		if step.Sequence != index+1 {
 			t.Fatalf("steps[%d].sequence = %d, want %d", index, step.Sequence, index+1)

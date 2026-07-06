@@ -87,7 +87,7 @@ func RunHTTPCases(options HTTPRunnerOptions, cases []HTTPCase) (map[string]any, 
 	assertions := make([]map[string]any, 0, len(cases))
 	for _, testCase := range cases {
 		step, sample, results := runHTTPCase(runner, testCase, maxBodyBytes)
-		if stepPass, _ := step["pass"].(bool); !stepPass {
+		if stepOK, _ := step["ok"].(bool); !stepOK {
 			pass = false
 		}
 		for _, result := range results {
@@ -104,12 +104,13 @@ func RunHTTPCases(options HTTPRunnerOptions, cases []HTTPCase) (map[string]any, 
 		status = "failed"
 	}
 	return map[string]any{
+		"result_kind":       httpEvidenceKind,
 		"schema_version":    "evidence.v1",
 		"schema_ref":        evidenceSchemaRef,
-		"kind":              httpEvidenceKind,
-		"pass":              pass,
+		"ok":                pass,
 		"status":            status,
 		"steps":             steps,
+		"diagnostics":       []map[string]any{},
 		"http_samples":      samples,
 		"assertion_results": assertionResults(assertions),
 		"redaction_applied": true,
@@ -129,7 +130,7 @@ func runHTTPCase(runner httpRunner, testCase HTTPCase, maxBodyBytes int64) (map[
 			"method": testCase.Method,
 			"path":   testCase.Path,
 			"status": "failed",
-			"pass":   false,
+			"ok":     false,
 			"reason": err.Error(),
 		}
 		return step, map[string]any{"id": testCase.ID, "response": map[string]any{"error": err.Error()}}, []map[string]any{failedHTTPAssertion(testCase.ID, err.Error())}
@@ -143,7 +144,7 @@ func runHTTPCase(runner httpRunner, testCase HTTPCase, maxBodyBytes int64) (map[
 			"method": testCase.Method,
 			"path":   testCase.Path,
 			"status": "failed",
-			"pass":   false,
+			"ok":     false,
 			"reason": err.Error(),
 		}
 		return step, map[string]any{
@@ -171,7 +172,7 @@ func runHTTPCase(runner httpRunner, testCase HTTPCase, maxBodyBytes int64) (map[
 		"method":      testCase.Method,
 		"path":        testCase.Path,
 		"status":      status,
-		"pass":        casePass,
+		"ok":          casePass,
 		"http_status": response.StatusCode,
 	}
 	addEnvelopeFields(step, envelope, hasEnvelope)

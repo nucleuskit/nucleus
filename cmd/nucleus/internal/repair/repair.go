@@ -27,7 +27,7 @@ func BuildEvidence(dir string, evidencePath string, maxRounds int) (map[string]a
 	if err != nil {
 		return nil, err
 	}
-	if evidence["kind"] == "nucleus.verify_result" && hasFailedStep(evidence, "generated_freshness") {
+	if evidenceResultKind(evidence) == "nucleus.verify_result" && hasFailedStep(evidence, "generated_freshness") {
 		return regenerateAndVerify(dir, maxRounds, "regenerate_generated_freshness"), nil
 	}
 	if hasMissingGenerated(evidence) {
@@ -38,47 +38,35 @@ func BuildEvidence(dir string, evidencePath string, maxRounds int) (map[string]a
 		return applyPatchCandidate(dir, evidence, candidate, maxRounds), nil
 	}
 	if reason != "" {
-		return manualRepairEvidence(maxRounds, evidence["kind"], reason), nil
+		return manualRepairEvidence(maxRounds, evidenceResultKind(evidence), reason), nil
 	}
-	return manualRepairEvidence(maxRounds, evidence["kind"], "automatic code repair is not implemented in the safe skeleton"), nil
+	return manualRepairEvidence(maxRounds, evidenceResultKind(evidence), "automatic code repair is not implemented in the safe skeleton"), nil
 }
 
 func manualRepairEvidence(maxRounds int, evidenceKind any, reason string) map[string]any {
-	return map[string]any{
-		"schema_version": "repair.v1",
-		"kind":           "nucleus.repair_evidence",
-		"pass":           false,
-		"status":         "needs_manual_action",
-		"max_rounds":     maxRounds,
-		"rounds": []map[string]any{
-			{
-				"id":            "repair-1",
-				"status":        "unsupported",
-				"reason":        reason,
-				"evidence_kind": evidenceKind,
-			},
+	rounds := []map[string]any{
+		{
+			"id":            "repair-1",
+			"status":        "unsupported",
+			"reason":        reason,
+			"evidence_kind": evidenceKind,
 		},
 	}
+	return repairEvidence(false, "needs_manual_action", maxRounds, rounds, nil)
 }
 
 func regenerateAndVerify(dir string, maxRounds int, strategy string) map[string]any {
 	result, genErr := contractgen.GenerateWithOptions(dir, contractgen.Options{HTTP: true, GRPC: true, Errors: true})
 	if genErr != nil {
-		return map[string]any{
-			"schema_version": "repair.v1",
-			"kind":           "nucleus.repair_evidence",
-			"pass":           false,
-			"status":         "failed",
-			"max_rounds":     maxRounds,
-			"rounds": []map[string]any{
-				{
-					"id":       "repair-1",
-					"strategy": strategy,
-					"status":   "failed",
-					"stderr":   genErr.Error(),
-				},
+		rounds := []map[string]any{
+			{
+				"id":       "repair-1",
+				"strategy": strategy,
+				"status":   "failed",
+				"stderr":   genErr.Error(),
 			},
 		}
+		return repairEvidence(false, "failed", maxRounds, rounds, nil)
 	}
 	verifyResult := verify.BuildResultForDir(dir)
 	verificationPass := verifyResult.OK
@@ -86,56 +74,51 @@ func regenerateAndVerify(dir string, maxRounds int, strategy string) map[string]
 	if verificationPass {
 		status = "repaired"
 	}
-	return map[string]any{
-		"schema_version":    "repair.v1",
-		"kind":              "nucleus.repair_evidence",
-		"pass":              verificationPass,
-		"status":            status,
-		"max_rounds":        maxRounds,
-		"verification_pass": verificationPass,
-		"rounds": []map[string]any{
-			{
-				"id":              "repair-1",
-				"strategy":        strategy,
-				"status":          status,
-				"generated_files": result.Files,
-				"source_hash":     result.Hash,
-			},
+	rounds := []map[string]any{
+		{
+			"id":              "repair-1",
+			"strategy":        strategy,
+			"status":          status,
+			"generated_files": result.Files,
+			"source_hash":     result.Hash,
 		},
-		"verify_result": verifyResult,
 	}
+	return repairEvidence(verificationPass, status, maxRounds, rounds, map[string]any{
+		"verification_pass": verificationPass,
+		"verify_result":     verifyResult,
+	})
 }
 
 func applyPatchCandidate(dir string, evidence map[string]any, candidate patchCandidate, maxRounds int) map[string]any {
 	description, err := inspect.Describe(dir)
 	if err != nil {
-		return manualRepairEvidence(maxRounds, evidence["kind"], err.Error())
+		return manualRepairEvidence(maxRounds, evidenceResultKind(evidence), err.Error())
 	}
 	surface := classifyRepairSurface(candidate.File, description.EditSurfaces, evidenceAllowedFiles(evidence))
 	if surface != "allowed" {
-		return manualRepairEvidence(maxRounds, evidence["kind"], "patch file is not in allowed edit surfaces")
+		return manualRepairEvidence(maxRounds, evidenceResultKind(evidence), "patch file is not in allowed edit surfaces")
 	}
 	fullPath, err := resolveRepairPath(dir, candidate.File)
 	if err != nil {
-		return manualRepairEvidence(maxRounds, evidence["kind"], err.Error())
+		return manualRepairEvidence(maxRounds, evidenceResultKind(evidence), err.Error())
 	}
 	if err := rejectSymlinkPath(dir, fullPath, candidate.File); err != nil {
-		return manualRepairEvidence(maxRounds, evidence["kind"], err.Error())
+		return manualRepairEvidence(maxRounds, evidenceResultKind(evidence), err.Error())
 	}
 	original, err := os.ReadFile(fullPath)
 	if err != nil {
-		return manualRepairEvidence(maxRounds, evidence["kind"], err.Error())
+		return manualRepairEvidence(maxRounds, evidenceResultKind(evidence), err.Error())
 	}
 	originalHash := sha256String(string(original))
 	if candidate.ExpectedHash == "" || !strings.EqualFold(candidate.ExpectedHash, originalHash) {
-		return manualRepairEvidence(maxRounds, evidence["kind"], "patch expected_hash does not match current file")
+		return manualRepairEvidence(maxRounds, evidenceResultKind(evidence), "patch expected_hash does not match current file")
 	}
 	if count := strings.Count(string(original), candidate.Find); count != 1 {
-		return manualRepairEvidence(maxRounds, evidence["kind"], fmt.Sprintf("patch find must match exactly once, got %d", count))
+		return manualRepairEvidence(maxRounds, evidenceResultKind(evidence), fmt.Sprintf("patch find must match exactly once, got %d", count))
 	}
 	updated := strings.Replace(string(original), candidate.Find, candidate.Replace, 1)
 	if err := os.WriteFile(fullPath, []byte(updated), 0o644); err != nil {
-		return manualRepairEvidence(maxRounds, evidence["kind"], err.Error())
+		return manualRepairEvidence(maxRounds, evidenceResultKind(evidence), err.Error())
 	}
 	verifyResult := verify.BuildResultForDir(dir)
 	verificationPass := verifyResult.OK
@@ -143,35 +126,30 @@ func applyPatchCandidate(dir string, evidence map[string]any, candidate patchCan
 	if verificationPass {
 		status = "repaired"
 	}
-	return map[string]any{
-		"schema_version":    "repair.v1",
-		"kind":              "nucleus.repair_evidence",
-		"pass":              verificationPass,
-		"status":            status,
-		"max_rounds":        maxRounds,
-		"verification_pass": verificationPass,
-		"rounds": []map[string]any{
-			{
-				"id":       "repair-1",
-				"strategy": "bounded_business_patch",
-				"status":   status,
-				"file":     candidate.File,
-				"reason":   candidate.Reason,
-				"rollback_point": map[string]any{
-					"id":               "rollback-1",
-					"path":             candidate.File,
-					"strategy":         "restore original content",
-					"available":        true,
-					"original_hash":    originalHash,
-					"original_content": string(original),
-				},
-				"verification": map[string]any{
-					"pass": verificationPass,
-				},
+	rounds := []map[string]any{
+		{
+			"id":       "repair-1",
+			"strategy": "bounded_business_patch",
+			"status":   status,
+			"file":     candidate.File,
+			"reason":   candidate.Reason,
+			"rollback_point": map[string]any{
+				"id":               "rollback-1",
+				"path":             candidate.File,
+				"strategy":         "restore original content",
+				"available":        true,
+				"original_hash":    originalHash,
+				"original_content": string(original),
+			},
+			"verification": map[string]any{
+				"ok": verificationPass,
 			},
 		},
-		"verify_result": verifyResult,
 	}
+	return repairEvidence(verificationPass, status, maxRounds, rounds, map[string]any{
+		"verification_pass": verificationPass,
+		"verify_result":     verifyResult,
+	})
 }
 
 func readJSONObject(path string) (map[string]any, error) {
@@ -239,6 +217,75 @@ func rawStringField(value map[string]any, key string) string {
 	return text
 }
 
+func evidenceResultKind(evidence map[string]any) string {
+	return stringField(evidence, "result_kind")
+}
+
+func repairEvidence(ok bool, status string, maxRounds int, rounds []map[string]any, extra map[string]any) map[string]any {
+	result := map[string]any{
+		"result_kind":    resultKindRepairEvidence,
+		"schema_version": schemaVersionEvidence,
+		"schema_ref":     schemaRefEvidence,
+		"ok":             ok,
+		"status":         status,
+		"max_rounds":     maxRounds,
+		"steps":          repairSteps(rounds),
+		"diagnostics":    []map[string]any{},
+		"rounds":         rounds,
+	}
+	for key, value := range extra {
+		result[key] = value
+	}
+	return result
+}
+
+func repairSteps(rounds []map[string]any) []map[string]any {
+	steps := make([]map[string]any, 0, len(rounds))
+	for index, round := range rounds {
+		id := stringField(round, "id")
+		if id == "" {
+			id = fmt.Sprintf("repair-%d", index+1)
+		}
+		status := repairStepStatus(stringField(round, "status"))
+		kind := stringField(round, "strategy")
+		if kind == "" {
+			kind = "repair_round"
+		}
+		step := map[string]any{
+			"id":     id,
+			"kind":   kind,
+			"status": status,
+			"ok":     status == statusPassed,
+		}
+		if reason := stringField(round, "reason"); reason != "" {
+			step["reason"] = reason
+		}
+		if stderr := stringField(round, "stderr"); stderr != "" {
+			step["error"] = stderr
+		}
+		if file := stringField(round, "file"); file != "" {
+			step["file"] = file
+		}
+		returnedStatus := stringField(round, "status")
+		if returnedStatus != "" && returnedStatus != status {
+			step["repair_status"] = returnedStatus
+		}
+		steps = append(steps, step)
+	}
+	return steps
+}
+
+func repairStepStatus(status string) string {
+	switch status {
+	case "repaired":
+		return statusPassed
+	case "failed":
+		return statusFailed
+	default:
+		return statusBlocked
+	}
+}
+
 func hasFailedStep(evidence map[string]any, id string) bool {
 	steps, ok := evidence["steps"].([]any)
 	if !ok {
@@ -250,8 +297,8 @@ func hasFailedStep(evidence map[string]any, id string) bool {
 			continue
 		}
 		stepID, _ := step["id"].(string)
-		stepPass, _ := step["pass"].(bool)
-		if stepID == id && !stepPass {
+		stepOK, _ := step["ok"].(bool)
+		if stepID == id && !stepOK {
 			return true
 		}
 	}
@@ -283,8 +330,8 @@ func evidenceSteps(evidence map[string]any) []map[string]any {
 }
 
 func stepIndicatesMissingGenerated(step map[string]any) bool {
-	stepPass, _ := step["pass"].(bool)
-	if stepPass {
+	stepOK, _ := step["ok"].(bool)
+	if stepOK {
 		return false
 	}
 	for _, key := range []string{"id", "kind"} {

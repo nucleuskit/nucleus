@@ -25,8 +25,8 @@ const (
 
 const (
 	resultKindServe    = "nucleus.serve_result"
-	schemaVersionServe = "serve.v1"
-	schemaRefServe     = "contract/schema/serve.schema.json"
+	schemaVersionServe = "serve-result.v1"
+	schemaRefServe     = "contract/schema/serve-result.v1.schema.json"
 	jsonIndentPrefix   = ""
 	jsonIndentValue    = "  "
 )

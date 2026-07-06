@@ -12,13 +12,16 @@ func BuildExecutable(plan map[string]any) map[string]any {
 	contractFirst, _ := plan["contract_first"].(bool)
 	suggestedEdits := anyStringSlice(plan["suggested_edits"])
 	blockedEdits := anyStringSlice(plan["blocked_edits"])
+	blockedDecisions, _ := plan["blocked_decisions"].([]lockedDecisionBlock)
 	commands := anyStringSlice(plan["commands"])
 	risks := anyStringSlice(plan["risks"])
+	impact, _ := plan["impact_summary"].(impactSummary)
+	diagnostics := mapDiagnostics(plan["diagnostics"])
 
 	return map[string]any{
 		"result_kind":    resultKindExecutablePlan,
-		"ok":             len(blockedEdits) == 0,
-		"summary":        buildSummary(taskType, contractFirst, suggestedEdits, blockedEdits, commands, risks),
+		"ok":             len(blockedEdits) == 0 && blockedDecisionCount(plan) == 0 && !diagnostics.Failed(),
+		"summary":        buildSummary(taskType, contractFirst, suggestedEdits, blockedEdits, blockedDecisions, commands, risks, impact),
 		"schema_version": schemaVersionExecutable,
 		"kind":           executablePlanKind,
 		"schema_ref":     schemaRefPlanExecutable,
@@ -35,14 +38,17 @@ func BuildExecutable(plan map[string]any) map[string]any {
 			"risk_level":  riskLevel(risks),
 			"acceptance":  []string{"planned edits, commands, assertions, and rollback are machine-readable"},
 		},
-		"edits":           executableEdits(suggestedEdits),
-		"blocked_edits":   executableBlockedEdits(blockedEdits),
-		"commands":        executableCommands(commands),
-		"assertions":      executableAssertions(commands, blockedEdits),
-		"rollback":        executableRollback(suggestedEdits),
-		"risks":           risks,
-		"context":         plan["context"],
-		"evidence_policy": evidencePolicy(),
+		"edits":             executableEdits(suggestedEdits),
+		"blocked_edits":     executableBlockedEdits(blockedEdits),
+		"blocked_decisions": plan["blocked_decisions"],
+		"diagnostics":       diagnostics,
+		"commands":          executableCommands(commands),
+		"assertions":        executableAssertions(commands, blockedEdits),
+		"rollback":          executableRollback(suggestedEdits),
+		"risks":             risks,
+		"impact_summary":    plan["impact_summary"],
+		"context":           plan["context"],
+		"evidence_policy":   evidencePolicy(),
 	}
 }
 
@@ -165,8 +171,6 @@ func evidencePolicy() map[string]any {
 
 func commandPhase(command string) string {
 	switch {
-	case strings.Contains(command, " capability add "):
-		return commandPhaseScaffold
 	case strings.Contains(command, " gen "):
 		return commandPhaseGenerate
 	case strings.Contains(command, " lint "):

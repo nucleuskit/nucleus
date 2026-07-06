@@ -38,18 +38,19 @@ func TestCommandJSONDryRunSuccess(t *testing.T) {
 	}
 
 	var output struct {
-		Kind  string           `json:"kind"`
-		Pass  bool             `json:"pass"`
-		Mode  string           `json:"mode"`
-		Steps []map[string]any `json:"steps"`
+		ResultKind string           `json:"result_kind"`
+		SchemaRef  string           `json:"schema_ref"`
+		OK         bool             `json:"ok"`
+		Mode       string           `json:"mode"`
+		Steps      []map[string]any `json:"steps"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("decode JSON: %v\n%s", err, stdout.String())
 	}
-	if output.Kind != "nucleus.apply_evidence" || !output.Pass || output.Mode != "dry-run" {
+	if output.ResultKind != resultKindApplyEvidence || output.SchemaRef != schemaRefEvidence || !output.OK || output.Mode != "dry-run" {
 		t.Fatalf("unexpected apply evidence: %#v", output)
 	}
-	if len(output.Steps) != 1 || output.Steps[0]["surface"] != "allowed" {
+	if len(output.Steps) != 1 || output.Steps[0]["surface"] != "allowed" || output.Steps[0]["ok"] != true {
 		t.Fatalf("steps = %#v, want one allowed edit check", output.Steps)
 	}
 }
@@ -117,7 +118,7 @@ func TestApplyRejectsSymlinkEditPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
-	if evidence["pass"] != false {
+	if evidence["ok"] != false {
 		t.Fatalf("symlink edit should fail: %#v", evidence)
 	}
 	data, err := os.ReadFile(outsidePath)
@@ -131,7 +132,7 @@ func TestApplyRejectsSymlinkEditPath(t *testing.T) {
 
 func writeApplyService(t *testing.T, dir string, allowed []string) {
 	t.Helper()
-	writeApplyFile(t, dir, "nucleus.yaml", `schema_version: "1.0"
+	writeApplyFile(t, dir, "nucleus.yaml", `schema_version: "2.0"
 service:
   name: demo
   version: "0.1.0"

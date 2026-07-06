@@ -34,5 +34,6 @@ const (
 	resultKindHTTPCaseDrafts = "nucleus.http_case_drafts_result"
 	planKind                 = "nucleus.scenario_plan"
 	httpCaseDraftsKind       = "nucleus.http_case_drafts"
-	scenarioSchemaVersion    = "scenario.v1"
+	scenarioSchemaVersion    = "scenario-result.v1"
+	scenarioSchemaRef        = "contract/schema/scenario-result.v1.schema.json"
 )

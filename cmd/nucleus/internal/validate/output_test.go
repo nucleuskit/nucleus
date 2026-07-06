@@ -89,6 +89,12 @@ func TestRenderJSONOutput(t *testing.T) {
 	if output["result_kind"] != resultKindValidate {
 		t.Fatalf("result_kind = %v, want %s", output["result_kind"], resultKindValidate)
 	}
+	if output["schema_version"] != schemaVersionValidate {
+		t.Fatalf("schema_version = %v, want %s", output["schema_version"], schemaVersionValidate)
+	}
+	if output["schema_ref"] != schemaRefValidate {
+		t.Fatalf("schema_ref = %v, want %s", output["schema_ref"], schemaRefValidate)
+	}
 	if output["ok"] != false {
 		t.Fatalf("ok = %v, want false", output["ok"])
 	}

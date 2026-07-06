@@ -35,7 +35,7 @@ func TestReportCommandJSONRootWiring(t *testing.T) {
 		t.Fatalf("decode report output: %v\n%s", err, stdout.String())
 	}
 	assertString(t, output, "result_kind", "nucleus.report_result")
-	assertString(t, output, "schema_ref", "contract/schema/report.schema.json")
+	assertString(t, output, "schema_ref", "contract/schema/report.v1.schema.json")
 	assertString(t, output, "mode", "ai_quality")
 	assertBool(t, output, "ok", true)
 	summary := assertMap(t, output, "summary")
